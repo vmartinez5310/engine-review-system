@@ -4,16 +4,39 @@ import ResenasView from '../views/ResenasView.vue'
 import Seguimientos from '../views/Seguimientos.vue'
 import ConfigView from '../views/ConfigView.vue'
 
+// 1. Importar solo el estado global (el cierre de sesión lo manejará App.vue)
+import { authState } from '../composables/useAuth'
+
 const props = defineProps({ config: Object })
 const emit = defineEmits(['logout'])
 
+// --- ESTADOS DE LA INTERFAZ ---
 const activeTab = ref('resenas') 
 const isSidebarOpen = ref(false)
 const isMinified = ref(false)
 const isDarkMode = ref(false)
-const userInitials = ref('AD')
-const userRole = ref('ADMINISTRADOR')
 
+// --- LÓGICA REACTIVA DEL USUARIO ---
+const currentUser = computed(() => authState.user || {})
+const userRole = computed(() => currentUser.value.rol || 'USUARIO')
+
+const userName = computed(() => {
+  const nombre = currentUser.value.nombre || 'Usuario'
+  return nombre.split(' ')[0]
+})
+
+const userInitials = computed(() => {
+  const n = currentUser.value.nombre || 'U'
+  return n.substring(0, 2).toUpperCase()
+})
+
+// Función helper para evaluar permisos en el HTML
+function hasPermission(permission) {
+  const perms = currentUser.value.permisos || []
+  return perms.includes(permission)
+}
+
+// --- COMPUTADOS DE NAVEGACIÓN ---
 const pageTitle = computed(() => {
   const titles = {
     'resenas': 'Reseñas',
@@ -33,6 +56,7 @@ const currentConfigSubtab = computed(() => {
   return activeTab.value === 'config-apariencia' ? 'apariencia' : 'usuarios'
 })
 
+// --- CICLO DE VIDA Y UI ---
 onMounted(() => {
   if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     isDarkMode.value = true
@@ -58,7 +82,10 @@ function toggleTheme() {
   }
 }
 
-function logout() { emit('logout') }
+// Emite el evento hacia App.vue para activar la coreografía de salida
+function logout() {
+  emit('logout')
+}
 </script>
 
 <template>
@@ -95,7 +122,7 @@ function logout() { emit('logout') }
         </div>
       </div>
 
-<!-- Menú -->
+      <!-- Menú -->
       <nav class="flex-1 px-4 py-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
         
         <Transition name="fade-sidebar">
@@ -113,63 +140,51 @@ function logout() { emit('logout') }
                 Reseñas
               </span>
             </Transition>
-
-            <Transition name="fade-sidebar">
-              <span v-show="!isMinified && activeTab === 'resenas'" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white shadow-inner ml-2">0</span>
-            </Transition>
           </div>
         </button>
 
-        <!-- Tab: Seguimientos -->
-        <button @click="activeTab = 'seguimientos'; isSidebarOpen = false" 
+        <!-- Tab: Seguimientos (Solo si tiene permiso) -->
+        <button v-if="hasPermission('ver_seguimientos')" @click="activeTab = 'seguimientos'; isSidebarOpen = false" 
           :class="['w-full flex items-center px-4 py-3 rounded-xl transition-all group', activeTab === 'seguimientos' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <i class="fas fa-paper-plane text-lg w-6 text-center transition-colors"></i>
-            
             <Transition name="fade-sidebar">
-              <span v-show="!isMinified" class="ml-3 text-sm whitespace-nowrap font-semibold">
-                Seguimientos
-              </span>
+              <span v-show="!isMinified" class="ml-3 text-sm whitespace-nowrap font-semibold">Seguimientos</span>
             </Transition>
           </div>
         </button>
 
-        <!-- Admin Section -->
-        <div v-if="userRole === 'ADMINISTRADOR'" class="mt-6">
+        <!-- Admin Section (Solo si tiene algún permiso de config) -->
+        <div v-if="hasPermission('gestionar_usuarios') || hasPermission('configurar_sistema')" class="mt-6">
           
           <Transition name="fade-sidebar">
             <div v-show="!isMinified" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-3 whitespace-nowrap">Administración</div>
           </Transition>
           
           <div class="flex flex-col gap-1">
-            <button @click="activeTab = 'config-usuarios'; isSidebarOpen = false" 
+            <button v-if="hasPermission('gestionar_usuarios')" @click="activeTab = 'config-usuarios'; isSidebarOpen = false" 
               :class="['w-full flex items-center px-4 py-3 rounded-xl transition-all group', activeTab === 'config-usuarios' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
               <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
                 <i class="fas fa-users text-lg w-6 text-center transition-colors"></i>
-                
                 <Transition name="fade-sidebar">
-                  <span v-show="!isMinified" class="ml-3 text-sm whitespace-nowrap font-semibold">
-                    Gestión de Usuarios
-                  </span>
+                  <span v-show="!isMinified" class="ml-3 text-sm whitespace-nowrap font-semibold">Gestión de Usuarios</span>
                 </Transition>
               </div>
             </button>
 
-            <button @click="activeTab = 'config-apariencia'; isSidebarOpen = false" 
+            <button v-if="hasPermission('configurar_sistema')" @click="activeTab = 'config-apariencia'; isSidebarOpen = false" 
               :class="['w-full flex items-center px-4 py-3 rounded-xl transition-all group', activeTab === 'config-apariencia' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
               <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
                 <i class="fas fa-paint-brush text-lg w-6 text-center transition-colors"></i>
-                
                 <Transition name="fade-sidebar">
-                  <span v-show="!isMinified" class="ml-3 text-sm whitespace-nowrap font-semibold">
-                    Personalización
-                  </span>
+                  <span v-show="!isMinified" class="ml-3 text-sm whitespace-nowrap font-semibold">Personalización</span>
                 </Transition>
               </div>
             </button>
           </div>
         </div>
       </nav>
+
       <!-- Logout -->
       <div class="p-4 border-t border-slate-800 flex flex-col gap-2 bg-slate-900/50">
         <button @click="logout" class="w-full flex items-center px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors group">
@@ -205,9 +220,18 @@ function logout() { emit('logout') }
           <button @click="toggleTheme" class="w-10 h-10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-brand dark:hover:text-amber-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
             <i :class="isDarkMode ? 'fas fa-sun text-lg' : 'fas fa-moon text-lg'"></i>
           </button>
-          <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-          <div class="flex items-center gap-3 pl-2">
-            <div class="w-9 h-9 rounded-full bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand-light font-bold text-xs shadow-inner">{{ userInitials }}</div>
+          
+          <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 sm:mx-2"></div>
+          
+          <!-- INFO DEL USUARIO LOGGEADO -->
+          <div class="flex items-center gap-3 pl-1">
+            <div class="hidden sm:flex flex-col items-end">
+              <span class="text-sm font-bold text-slate-800 dark:text-white leading-tight">{{ userName }}</span>
+              <span class="text-[10px] font-semibold text-brand dark:text-brand-light uppercase tracking-wider">{{ userRole }}</span>
+            </div>
+            <div class="w-9 h-9 rounded-full bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand dark:text-brand-light font-bold text-sm shadow-inner uppercase">
+              {{ userInitials }}
+            </div>
           </div>
         </div>
       </header>
@@ -238,10 +262,10 @@ function logout() { emit('logout') }
 
 /* Transición específica para el texto del Sidebar para evitar desbordamiento */
 .fade-sidebar-enter-active {
-  transition: opacity 0.3s ease 0.15s; /* Se retrasa ligeramente al abrir para que haya espacio */
+  transition: opacity 0.3s ease 0.15s;
 }
 .fade-sidebar-leave-active {
-  transition: opacity 0.1s ease; /* Desaparece ultra rápido al cerrar */
+  transition: opacity 0.1s ease;
 }
 .fade-sidebar-enter-from,
 .fade-sidebar-leave-to {
