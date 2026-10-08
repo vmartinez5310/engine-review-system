@@ -36,3 +36,8 @@ export function logout() {
   authState.isAuthenticated = false
   window.location.reload()
 }
+
+export function hasPermission(permission) {
+  const perms = authState.user?.permisos || []
+  return perms.includes(permission)
+}

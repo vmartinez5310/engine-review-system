@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import LoginView from './components/LoginView.vue'
-import DashboardLayout from './components/DashboardLayout.vue'
+import LoginView from './views/auth/LoginView.vue'
+import DashboardLayout from './components/layout/DashboardLayout.vue'
 import { apiClient } from './services/api'
 import { authState, fetchUserInfo, logout as authLogout } from './composables/useAuth'
 
