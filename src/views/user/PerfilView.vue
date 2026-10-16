@@ -8,6 +8,11 @@ const initials = computed(() => {
   const n = user.value.nombre || 'U'
   return n.substring(0, 2).toUpperCase()
 })
+
+const avatarUrl = computed(() => {
+  const u = (user.value.logo || '').trim()
+  return /^https?:\/\//i.test(u) ? u : null
+})
 </script>
 
 <template>
@@ -15,8 +20,15 @@ const initials = computed(() => {
     <div class="max-w-lg mx-auto pb-10">
       <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div class="bg-brand/10 dark:bg-brand/5 px-6 py-8 flex flex-col items-center gap-3">
-          <div class="w-20 h-20 rounded-full bg-brand text-white flex items-center justify-center text-2xl font-bold shadow-lg ring-4 ring-white dark:ring-slate-800">
-            {{ initials }}
+          <div class="w-20 h-20 rounded-full bg-brand text-white flex items-center justify-center text-2xl font-bold shadow-lg ring-4 ring-white dark:ring-slate-800 overflow-hidden">
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              :alt="user.nombre"
+              class="w-full h-full object-cover"
+              @error="$event.target.style.display='none'"
+            />
+            <template v-else>{{ initials }}</template>
           </div>
           <div class="text-center">
             <h2 class="text-lg font-bold text-slate-800 dark:text-white">{{ user.nombre || 'Usuario' }}</h2>
