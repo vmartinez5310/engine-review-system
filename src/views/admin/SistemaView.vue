@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { apiClient } from '../../services/api'
 import { hasPermission } from '../../composables/useAuth'
 
@@ -12,6 +12,15 @@ const form = ref({
   Logo_Horizontal: '',
   Logo_Vertical: '',
   URL_Frontend_App: ''
+})
+
+const previewH = computed(() => {
+  const u = (form.value.Logo_Horizontal || '').trim()
+  return /^https?:\/\//i.test(u) ? u : null
+})
+const previewV = computed(() => {
+  const u = (form.value.Logo_Vertical || '').trim()
+  return /^https?:\/\//i.test(u) ? u : null
 })
 
 async function loadConfig() {
@@ -69,8 +78,21 @@ async function saveConfig() {
           </div>
         </div>
 
-        <BaseInput v-model="form.Logo_Horizontal" label="Logo horizontal (URL)" placeholder="https://..." icon="fas fa-image" />
-        <BaseInput v-model="form.Logo_Vertical" label="Logo vertical / icono (URL)" placeholder="https://..." icon="fas fa-icons" />
+        <div>
+          <BaseInput v-model="form.Logo_Horizontal" label="Logo horizontal (URL)" placeholder="https://..." icon="fas fa-image" />
+          <p class="text-[11px] text-slate-400 mt-1">URL publica. Se guarda en la hoja Configuracion.</p>
+          <div v-if="previewH" class="mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 inline-block">
+            <img :src="previewH" alt="Logo H" class="h-12 object-contain max-w-[180px]" @error="$event.target.style.display='none'" />
+          </div>
+        </div>
+
+        <div>
+          <BaseInput v-model="form.Logo_Vertical" label="Logo vertical / icono (URL)" placeholder="https://..." icon="fas fa-icons" />
+          <p class="text-[11px] text-slate-400 mt-1">Usado en sidebar colapsado e iconos.</p>
+          <div v-if="previewV" class="mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 inline-block">
+            <img :src="previewV" alt="Logo V" class="h-12 w-12 object-contain" @error="$event.target.style.display='none'" />
+          </div>
+        </div>
       </div>
 
       <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-5 shadow-sm">
