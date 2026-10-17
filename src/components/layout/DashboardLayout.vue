@@ -18,15 +18,17 @@ const ResenasView = defineAsyncComponent(() => import('../../views/core/ResenasV
 const UsuariosView = defineAsyncComponent(() => import('../../views/admin/UsuariosView.vue'))
 const SistemaView = defineAsyncComponent(() => import('../../views/admin/SistemaView.vue'))
 const PerfilView = defineAsyncComponent(() => import('../../views/user/PerfilView.vue'))
+const DashboardHomeView = defineAsyncComponent(() => import('../../views/core/DashboardHomeView.vue'))
 
 const currentViewComponent = computed(() => {
   const views = {
     'resenas': ResenasView,
     'usuarios': UsuariosView,
     'sistema': SistemaView,
-    'perfil': PerfilView
+    'perfil': PerfilView,
+    'home': DashboardHomeView
   }
-  return views[activeTab.value] || ResenasView
+  return views[activeTab.value] || DashboardHomeView
 })
 
 // --- MAPEO DE TÍTULOS ---
@@ -35,7 +37,8 @@ const pageTitle = computed(() => {
     'resenas': 'Centro de Reseñas',
     'usuarios': 'Gestión de Usuarios',
     'sistema': 'Configuración',
-    'perfil': 'Mi Perfil'
+    'perfil': 'Mi Perfil',
+    'home': 'Inicio'
   }
   return titles[activeTab.value] || 'Dashboard'
 })
@@ -138,6 +141,15 @@ onMounted(() => {
 
       <!-- Menú Superior (Negocio y Administración) -->
       <nav class="flex-1 px-3 py-2 flex flex-col gap-1.5 overflow-y-auto custom-scrollbar">
+
+        <!-- Ítem 1: Inicio -->
+        <button @click="navigateTo('home')" 
+          :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'home' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
+          <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
+            <i class="fas fa-home text-lg w-6 text-center"></i>
+            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Inicio</span></Transition>
+          </div>
+        </button>
         
         <!-- Ítem 1: Reseñas -->
         <button @click="navigateTo('resenas')" 
