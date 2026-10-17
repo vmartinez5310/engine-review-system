@@ -21,12 +21,15 @@ function doPost(e) {
       get_tracking: () => dash_obtenerSeguimientos(token),
       revoke_link: () => dash_revocarEnlace(token, payload.fila),
       get_users: () => dash_obtenerUsuarios(token),
-      update_user: () => dash_actualizarEstadoUsuario(token, payload.fila, payload.estado),
+      update_user: () => dash_actualizarUsuario(token, payload.fila, payload),
+      update_profile: () => dash_actualizarPerfil(token, payload),
       add_user: () => dash_agregarUsuario(token, payload.idUser, payload.nombre, payload.email, payload.rol, payload.logo),
       call_ai: () => dash_llamarGemini(token, payload.prompt),
       get_public_config: () => api_obtenerConfiguracionPublica(),
       update_config: () => dash_actualizarConfiguracion(token, payload.configuracion),
-      get_user_info: () => auth_obtenerInfoUsuario(token)
+      get_user_info: () => auth_obtenerInfoUsuario(token),
+      get_kpis: () => dash_obtenerKpis(token),
+      get_tokens: () => dash_obtenerTokens(token)
     };
 
     const handler = handlers[action];

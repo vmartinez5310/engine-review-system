@@ -195,15 +195,56 @@ function auth_obtenerInfoUsuario(token) {
     email: usuario.Email,
     rol: usuario.Rol,
     estado: usuario.Estado,
+    logo: usuario.Logo || '',
     permisos: ROLES[rol] || ROLES.USUARIO,
     notificaciones: { resenasNuevas, seguimientosAtrasados }
   };
 }
 
 function dash_actualizarEstadoUsuario(token, filaUsuario, nuevoEstado) {
+  return dash_actualizarUsuario(token, filaUsuario, { estado: nuevoEstado });
+}
+
+function dash_actualizarUsuario(token, filaUsuario, campos) {
   requerirPermiso('gestionar_usuarios', token);
-  db_actualizarCampos(BD.WHITELIST, filaUsuario, { Estado: nuevoEstado });
-  return { message: 'Estado actualizado.' };
+  const updates = {};
+  if (campos.estado !== undefined && campos.estado !== null && campos.estado !== '') {
+    updates.Estado = String(campos.estado).trim();
+  }
+  if (campos.nombre !== undefined && campos.nombre !== null) {
+    updates.Nombre = limpiarTexto(campos.nombre);
+  }
+  if (campos.rol !== undefined && campos.rol !== null && campos.rol !== '') {
+    updates.Rol = String(campos.rol).toUpperCase().trim();
+  }
+  if (campos.logo !== undefined) {
+    updates.Logo = String(campos.logo || '').trim();
+  }
+  if (!Object.keys(updates).length) throw new Error('Sin campos para actualizar.');
+  db_actualizarCampos(BD.WHITELIST, filaUsuario, updates);
+  return { message: 'Usuario actualizado.' };
+}
+
+function dash_actualizarPerfil(token, campos) {
+  const creds = requerirPermiso('ver_dashboard', token);
+  const usuario = db_leerTodo(BD.WHITELIST).find(u =>
+    String(u.Email).toLowerCase().trim() === String(creds.email).toLowerCase()
+  );
+  if (!usuario) throw new Error('Usuario no encontrado.');
+  const updates = {};
+  if (campos.nombre !== undefined && campos.nombre !== null) {
+    updates.Nombre = limpiarTexto(campos.nombre);
+  }
+  if (campos.logo !== undefined) {
+    updates.Logo = String(campos.logo || '').trim();
+  }
+  if (!Object.keys(updates).length) throw new Error('Sin campos para actualizar.');
+  db_actualizarCampos(BD.WHITELIST, usuario._fila, updates);
+  return {
+    message: 'Perfil actualizado.',
+    nombre: updates.Nombre !== undefined ? updates.Nombre : usuario.Nombre,
+    logo: updates.Logo !== undefined ? updates.Logo : (usuario.Logo || '')
+  };
 }
 
 function dash_llamarGemini(token, prompt) {
@@ -240,4 +281,54 @@ function dash_actualizarConfiguracion(token, configuracionNueva) {
     }
   }
   return { message: 'Configuración del sistema actualizada correctamente.' };
+}
+
+function dash_obtenerKpis(token) {
+  requerirPermiso('ver_dashboard', token);
+  const resenas = db_leerTodo(BD.RESENAS);
+  const tokens = db_leerTodo(BD.TOKENS);
+  const usuarios = db_leerTodo(BD.WHITELIST);
+
+  const totalResenas = resenas.length;
+  const pendientes = resenas.filter(r => String(r.Estado).trim() === 'Pendiente').length;
+  const aprobadas = resenas.filter(r => String(r.Estado).trim() === 'Aprobado').length;
+  const promedio = totalResenas
+    ? Math.round((resenas.reduce((s, r) => s + (parseFloat(r.Calificacion) || 0), 0) / totalResenas) * 10) / 10
+    : 0;
+
+  const tokensActivos = tokens.filter(t => String(t.Estado).trim() === 'Activo').length;
+  const tokensUsados = tokens.filter(t => String(t.Estado).trim() === 'Usado').length;
+  const tokensTotal = tokens.length;
+
+  const usuariosActivos = usuarios.filter(u => String(u.Estado).toUpperCase().trim() === 'ACTIVO').length;
+
+  return {
+    totalResenas,
+    pendientes,
+    aprobadas,
+    promedio,
+    tokensActivos,
+    tokensUsados,
+    tokensTotal,
+    usuariosActivos
+  };
+}
+
+function dash_obtenerTokens(token) {
+  requerirPermiso('configurar_sistema', token);
+  const mapa = {};
+  db_leerTodo(BD.WHITELIST).forEach(u => {
+    const id = extraerUserId(u);
+    if (id) mapa[id] = u.Nombre || '';
+  });
+  return db_leerTodo(BD.TOKENS).map(t => ({
+    fila: t._fila,
+    id: t.ID_Enlace,
+    fecha: t.Fecha_Envio,
+    cliente: t.Nombre_Cliente,
+    servicio: t.Zona_Servicio,
+    url: t.URL_Generada,
+    estado: t.Estado,
+    asesor: mapa[extraerUserId(t)] || t.UserId || '—'
+  })).reverse();
 }
