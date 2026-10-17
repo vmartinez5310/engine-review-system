@@ -195,15 +195,56 @@ function auth_obtenerInfoUsuario(token) {
     email: usuario.Email,
     rol: usuario.Rol,
     estado: usuario.Estado,
+    logo: usuario.Logo || '',
     permisos: ROLES[rol] || ROLES.USUARIO,
     notificaciones: { resenasNuevas, seguimientosAtrasados }
   };
 }
 
 function dash_actualizarEstadoUsuario(token, filaUsuario, nuevoEstado) {
+  return dash_actualizarUsuario(token, filaUsuario, { estado: nuevoEstado });
+}
+
+function dash_actualizarUsuario(token, filaUsuario, campos) {
   requerirPermiso('gestionar_usuarios', token);
-  db_actualizarCampos(BD.WHITELIST, filaUsuario, { Estado: nuevoEstado });
-  return { message: 'Estado actualizado.' };
+  const updates = {};
+  if (campos.estado !== undefined && campos.estado !== null && campos.estado !== '') {
+    updates.Estado = String(campos.estado).trim();
+  }
+  if (campos.nombre !== undefined && campos.nombre !== null) {
+    updates.Nombre = limpiarTexto(campos.nombre);
+  }
+  if (campos.rol !== undefined && campos.rol !== null && campos.rol !== '') {
+    updates.Rol = String(campos.rol).toUpperCase().trim();
+  }
+  if (campos.logo !== undefined) {
+    updates.Logo = String(campos.logo || '').trim();
+  }
+  if (!Object.keys(updates).length) throw new Error('Sin campos para actualizar.');
+  db_actualizarCampos(BD.WHITELIST, filaUsuario, updates);
+  return { message: 'Usuario actualizado.' };
+}
+
+function dash_actualizarPerfil(token, campos) {
+  const creds = requerirPermiso('ver_dashboard', token);
+  const usuario = db_leerTodo(BD.WHITELIST).find(u =>
+    String(u.Email).toLowerCase().trim() === String(creds.email).toLowerCase()
+  );
+  if (!usuario) throw new Error('Usuario no encontrado.');
+  const updates = {};
+  if (campos.nombre !== undefined && campos.nombre !== null) {
+    updates.Nombre = limpiarTexto(campos.nombre);
+  }
+  if (campos.logo !== undefined) {
+    updates.Logo = String(campos.logo || '').trim();
+  }
+  if (!Object.keys(updates).length) throw new Error('Sin campos para actualizar.');
+  db_actualizarCampos(BD.WHITELIST, usuario._fila, updates);
+  return {
+    message: 'Perfil actualizado.',
+    nombre: updates.Nombre !== undefined ? updates.Nombre : usuario.Nombre,
+    logo: updates.Logo !== undefined ? updates.Logo : (usuario.Logo || '')
+  };
 }
 
 function dash_llamarGemini(token, prompt) {
