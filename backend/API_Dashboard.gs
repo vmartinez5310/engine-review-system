@@ -282,3 +282,53 @@ function dash_actualizarConfiguracion(token, configuracionNueva) {
   }
   return { message: 'Configuración del sistema actualizada correctamente.' };
 }
+
+function dash_obtenerKpis(token) {
+  requerirPermiso('ver_dashboard', token);
+  const resenas = db_leerTodo(BD.RESENAS);
+  const tokens = db_leerTodo(BD.TOKENS);
+  const usuarios = db_leerTodo(BD.WHITELIST);
+
+  const totalResenas = resenas.length;
+  const pendientes = resenas.filter(r => String(r.Estado).trim() === 'Pendiente').length;
+  const aprobadas = resenas.filter(r => String(r.Estado).trim() === 'Aprobado').length;
+  const promedio = totalResenas
+    ? Math.round((resenas.reduce((s, r) => s + (parseFloat(r.Calificacion) || 0), 0) / totalResenas) * 10) / 10
+    : 0;
+
+  const tokensActivos = tokens.filter(t => String(t.Estado).trim() === 'Activo').length;
+  const tokensUsados = tokens.filter(t => String(t.Estado).trim() === 'Usado').length;
+  const tokensTotal = tokens.length;
+
+  const usuariosActivos = usuarios.filter(u => String(u.Estado).toUpperCase().trim() === 'ACTIVO').length;
+
+  return {
+    totalResenas,
+    pendientes,
+    aprobadas,
+    promedio,
+    tokensActivos,
+    tokensUsados,
+    tokensTotal,
+    usuariosActivos
+  };
+}
+
+function dash_obtenerTokens(token) {
+  requerirPermiso('configurar_sistema', token);
+  const mapa = {};
+  db_leerTodo(BD.WHITELIST).forEach(u => {
+    const id = extraerUserId(u);
+    if (id) mapa[id] = u.Nombre || '';
+  });
+  return db_leerTodo(BD.TOKENS).map(t => ({
+    fila: t._fila,
+    id: t.ID_Enlace,
+    fecha: t.Fecha_Envio,
+    cliente: t.Nombre_Cliente,
+    servicio: t.Zona_Servicio,
+    url: t.URL_Generada,
+    estado: t.Estado,
+    asesor: mapa[extraerUserId(t)] || t.UserId || '—'
+  })).reverse();
+}
