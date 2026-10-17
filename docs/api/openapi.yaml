@@ -1,0 +1,28 @@
+openapi: 3.0.0
+info:
+  title: Engine Review System API
+  description: API for managing tokens, reviews, and dashboard operations.
+  version: 1.0.0
+paths:
+  /auth/otp:
+    post:
+      summary: Request an OTP for login
+  /auth/verify:
+    post:
+      summary: Verify OTP and receive JWT
+  /tokens/generate:
+    post:
+      summary: Generate a new review invitation link/token
+  /reviews:
+    get:
+      summary: List all reviews (Dashboard)
+    post:
+      summary: Submit a new review (Public Widget)
+  /reviews/{id}/moderate:
+    patch:
+      summary: Approve, reject, or archive a review
+  /config:
+    get:
+      summary: Get global brand configuration
+    patch:
+      summary: Update brand configuration (Admin only)

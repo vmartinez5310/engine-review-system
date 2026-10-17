@@ -1,0 +1,60 @@
+// Generado a partir de Engine Review System SRS
+
+Enum EstadoTokenEnum {
+  Activo
+  Usado
+  Expirado
+  Revocado
+}
+
+Enum EstadoModeracionEnum {
+  Pendiente
+  Aprobado
+  Archivado
+  Rechazado
+}
+
+Enum RolUsuarioEnum {
+  Developer
+  Admin
+  "Usuario Normal"
+}
+
+Table Tokens {
+  ID_Enlace UUID [pk, note: 'Identificador único del token/enlace de invitación']
+  UserId_Admin UUID [not null, note: 'Identificador del usuario/administrador']
+  Fecha_Envio DATETIME [not null]
+  Nombre_Cliente VARCHAR(150) [not null]
+  Zona_Servicio VARCHAR(100)
+  Estado EstadoTokenEnum [not null]
+}
+
+Table Resenas {
+  ID_Resena UUID [pk]
+  ID_Enlace UUID [not null, ref: > Tokens.ID_Enlace]
+  Calificacion DECIMAL(2,1) [not null]
+  Comentario TEXT
+  Nombre_Publico VARCHAR(150) [not null]
+  Aviso_Privacidad BOOLEAN [not null]
+  Autorizacion_Publicacion BOOLEAN [not null]
+  Estado_Moderacion EstadoModeracionEnum [not null]
+  Respuesta_Admin TEXT
+  Fecha_Respuesta DATETIME
+}
+
+Table Whitelist {
+  UserId UUID [pk]
+  Email VARCHAR(255) [unique, not null]
+  Rol RolUsuarioEnum [not null]
+  Activo BOOLEAN [not null]
+}
+
+Table Configuracion {
+  ID_Config INT [pk]
+  Nombre_Empresa VARCHAR(150) [not null]
+  Color_Primario VARCHAR(7) [not null]
+  Color_Acento VARCHAR(7) [not null]
+  URL_Logo_Horizontal VARCHAR(500)
+  URL_Logo_Icono VARCHAR(500)
+  URL_Publica_Base VARCHAR(255) [not null]
+}
