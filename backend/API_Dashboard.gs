@@ -1,112 +1,130 @@
 function api_obtenerResenasPublicas() {
-  const resenas = db_leerTodo(BD.RESENAS);
-  return resenas.filter(r => String(r.Estado).trim() === 'Aprobado').map(r => ({
-    cliente: r.Nombre_Cliente || r.Cliente,
-    zona: r.Zona_Servicio || r.Zona_Propiedad,
-    calificacion: parseFloat(r.Calificacion) || 0,
-    comentario: r.Valor_Gestion || r.Comentario,
-    respuesta: r.Respuesta_Admin || "",
-    fecha: r.Fecha_Envio || r.Fecha
-  }));
+  return db_leerTodo(BD.RESENAS)
+    .filter(r => String(r.Estado).trim() === 'Aprobado')
+    .map(r => ({
+      cliente: r.Nombre_Cliente || r.Cliente,
+      zona: r.Zona_Servicio || r.Zona_Propiedad,
+      calificacion: parseFloat(r.Calificacion) || 0,
+      comentario: r.Valor_Gestion || r.Comentario,
+      respuesta: r.Respuesta_Admin || '',
+      fecha: r.Fecha_Envio || r.Fecha
+    }));
 }
 
 function api_guardarResenaPublica(data) {
-  // SEGURIDAD ESTRICTA: Se elimina el bypass temporal. Todo request debe traer un token válido.
   validarRecaptcha(data.recaptcha_token);
-  
-  let userId = "WEB"; 
+
+  let userId = 'WEB';
   if (data.token_id) {
     const token = db_leerTodo(BD.TOKENS).find(t => t.ID_Enlace === data.token_id && t.Estado === 'Activo');
     if (token) {
-      db_actualizarCampos(BD.TOKENS, token._fila, { "Estado": "Usado" });
+      db_actualizarCampos(BD.TOKENS, token._fila, { Estado: 'Usado' });
       userId = extraerUserId(token);
     }
   }
-  
-  const legalOk = (data.aviso_privacidad_aceptado === true || String(data.aviso_privacidad_aceptado) === "true");
-  const nombreLimpio = limpiarTexto(data.nombre_publico);
-  const comentarioLimpio = limpiarTexto(data.valor_gestion_resena);
-  const idResena = 'RES-' + Utilities.getUuid().substring(0, 8).toUpperCase();
-  
-  db_crearFila(BD.RESENAS, [idResena, userId, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"), nombreLimpio, limpiarTexto(data.zona_propiedad), data.calificacion, comentarioLimpio, legalOk, 'Pendiente', '']);
-  
-  if (legalOk && userId !== "WEB") notificarAdminUsuario(userId, nombreLimpio, data.calificacion, comentarioLimpio);
-  return { message: "Reseña registrada con éxito." };
+
+  const legalOk = data.aviso_privacidad_aceptado === true || String(data.aviso_privacidad_aceptado) === 'true';
+  const nombre = limpiarTexto(data.nombre_publico);
+  const comentario = limpiarTexto(data.valor_gestion_resena);
+  const id = 'RES-' + Utilities.getUuid().substring(0, 8).toUpperCase();
+  const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+  db_crearFila(BD.RESENAS, [
+    id, userId, fecha, nombre, limpiarTexto(data.zona_propiedad),
+    data.calificacion, comentario, legalOk, 'Pendiente', ''
+  ]);
+
+  if (legalOk && userId !== 'WEB') {
+    notificarAdminUsuario(userId, nombre, data.calificacion, comentario);
+  }
+  return { message: 'Reseña registrada con éxito.' };
 }
 
 function dash_obtenerResenas(token) {
   requerirPermiso('ver_dashboard', token);
-  
-  const usuarios = db_leerTodo(BD.WHITELIST || 'Whitelist');
-  const mapaAsesores = {};
-  usuarios.forEach(u => {
-    if (u.UserId) {
-      mapaAsesores[u.UserId] = u.Nombre || '';
-    }
+
+  const mapa = {};
+  db_leerTodo(BD.WHITELIST).forEach(u => {
+    if (u.UserId) mapa[u.UserId] = u.Nombre || '';
   });
 
   return db_leerTodo(BD.RESENAS).map(r => ({
     fila: r._fila,
     id: r.ID_Resena,
     suserId: r.UserId,
-    asesor: mapaAsesores[r.UserId] || 'Sin asignar',
+    asesor: mapa[r.UserId] || 'Sin asignar',
     fecha: r.Fecha,
     cliente: r.Cliente,
     servicio: r.Servicio,
     calificacion: parseFloat(r.Calificacion) || 0,
-    comentario: r.Comentario || "",
-    legalOk: r.Legal_OK === true || r.Legal_OK === "TRUE",
+    comentario: r.Comentario || '',
+    legalOk: r.Legal_OK === true || r.Legal_OK === 'TRUE',
     estado: r.Estado,
-    respuesta: r.Respuesta_Admin || ""
+    respuesta: r.Respuesta_Admin || ''
   })).reverse();
 }
 
 function dash_actualizarResena(token, fila, estado, respuesta) {
   requerirPermiso('editar_resena', token);
-  const actualizaciones = { "Estado": estado };
-  if (respuesta !== undefined) actualizaciones["Respuesta_Admin"] = limpiarTexto(respuesta);
-  if (estado === 'Aprobado') actualizaciones["Aviso_Privacidad"] = true;
-  else if (estado === 'No aprobado') actualizaciones["Aviso_Privacidad"] = false;
-  
-  db_actualizarCampos(BD.RESENAS, fila, actualizaciones);
-  return { message: "Reseña actualizada." };
+  const updates = { Estado: estado };
+  if (respuesta !== undefined) updates.Respuesta_Admin = limpiarTexto(respuesta);
+  if (estado === 'Aprobado') updates.Aviso_Privacidad = true;
+  else if (estado === 'No aprobado') updates.Aviso_Privacidad = false;
+  db_actualizarCampos(BD.RESENAS, fila, updates);
+  return { message: 'Reseña actualizada.' };
 }
 
 function dash_generarEnlaceCliente(tokenDashboard, nombreCliente, servicio) {
-  const credenciales = requerirPermiso('generar_enlace', tokenDashboard);
-  const usuario = db_leerTodo(BD.WHITELIST).find(u => String(u.Email).toLowerCase().trim() === credenciales.email);
-  if (!usuario) throw new Error("Usuario gestor no encontrado.");
-  
+  const creds = requerirPermiso('generar_enlace', tokenDashboard);
+  const usuario = db_leerTodo(BD.WHITELIST).find(u => String(u.Email).toLowerCase().trim() === creds.email);
+  if (!usuario) throw new Error('Usuario gestor no encontrado.');
+
   const linkId = 'LNK-' + Utilities.getUuid().substring(0, 6).toUpperCase();
-  const nLimpio = limpiarTexto(nombreCliente);
-  const zLimpia = limpiarTexto(servicio);
-  
-  const header = Utilities.base64EncodeWebSafe(JSON.stringify({alg: "HS256", typ: "JWT"}));
-  const payload = Utilities.base64EncodeWebSafe(JSON.stringify({ id: linkId, u: extraerUserId(usuario), n: nLimpio, z: zLimpia }));
-  const signature = Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(`${header}.${payload}`, SEGURIDAD.SECRET_FIRMA));
-  
-  // SIN HARDCODE: Construimos el link final usando el parámetro del CMS
+  const n = limpiarTexto(nombreCliente);
+  const z = limpiarTexto(servicio);
+  const uid = extraerUserId(usuario);
+
+  const header = Utilities.base64EncodeWebSafe(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = Utilities.base64EncodeWebSafe(JSON.stringify({ id: linkId, u: uid, n, z }));
+  const sig = Utilities.base64EncodeWebSafe(
+    Utilities.computeHmacSha256Signature(`${header}.${payload}`, SEGURIDAD.SECRET_FIRMA)
+  );
+
   const cfg = getConfig();
-  if (!cfg.urlFrontend) throw new Error("Falta el parámetro 'URL_Frontend_App' en la hoja de Configuración.");
-  const urlFinal = `${cfg.urlFrontend}?t=${header}.${payload}.${signature}`; 
-  
-  db_crearFila(BD.TOKENS, [linkId, extraerUserId(usuario), Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"), nLimpio, zLimpia, urlFinal, 'Activo']);
-  return { url: urlFinal };
+  if (!cfg.urlFrontend) throw new Error("Falta 'URL_Frontend_App' en Configuración.");
+  const url = `${cfg.urlFrontend}?t=${header}.${payload}.${sig}`;
+
+  const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  db_crearFila(BD.TOKENS, [linkId, uid, fecha, n, z, url, 'Activo']);
+  return { url };
 }
 
 function dash_obtenerSeguimientos(token) {
   requerirPermiso('ver_seguimientos', token);
-  const hoy = new Date(); 
-  return db_leerTodo(BD.TOKENS).filter(t => t.Estado === 'Activo').map(t => {
-    const f = t.Fecha_Envio.split('-'); 
-    return { fila: t._fila, id: t.ID_Enlace, fecha: t.Fecha_Envio, cliente: t.Nombre_Cliente, servicio: t.Zona_Servicio, url: t.URL_Generada, dias: Math.floor(Math.abs(hoy - new Date(f[0], f[1] - 1, f[2])) / 86400000) };
-  }).reverse();
+  const hoy = new Date();
+  return db_leerTodo(BD.TOKENS)
+    .filter(t => t.Estado === 'Activo')
+    .map(t => {
+      const f = String(t.Fecha_Envio || '').split('-');
+      const dias = f.length >= 3
+        ? Math.floor(Math.abs(hoy - new Date(+f[0], +f[1] - 1, +f[2])) / 86400000)
+        : 0;
+      return {
+        fila: t._fila,
+        id: t.ID_Enlace,
+        fecha: t.Fecha_Envio,
+        cliente: t.Nombre_Cliente,
+        servicio: t.Zona_Servicio,
+        url: t.URL_Generada,
+        dias
+      };
+    }).reverse();
 }
 
 function dash_revocarEnlace(token, filaToken) {
   requerirPermiso('editar_resena', token);
-  db_actualizarCampos(BD.TOKENS, filaToken, { "Estado": "Cancelado" });
-  return { message: "Enlace revocado." };
+  db_actualizarCampos(BD.TOKENS, filaToken, { Estado: 'Cancelado' });
+  return { message: 'Enlace revocado.' };
 }
 
 function dash_obtenerUsuarios(token) {
@@ -125,43 +143,40 @@ function dash_obtenerUsuarios(token) {
 function dash_agregarUsuario(token, idUser, nombre, email, rolAsignado, logoUrl) {
   requerirPermiso('gestionar_usuarios', token);
   const emailLimpio = String(email).toLowerCase().trim();
-  const sheet = getSheet(BD.WHITELIST);
-
   if (db_leerTodo(BD.WHITELIST).some(u => String(u.Email).toLowerCase() === emailLimpio)) {
     throw new Error('Correo ya registrado.');
   }
 
-  const numColumnas = sheet.getLastColumn();
-  let nuevaFila = new Array(numColumnas).fill('');
-  nuevaFila[0] = limpiarTexto(idUser);
-  nuevaFila[1] = limpiarTexto(nombre);
-  nuevaFila[2] = emailLimpio;
+  const sheet = getSheet(BD.WHITELIST);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+  const fila = new Array(headers.length).fill('');
+  fila[0] = limpiarTexto(idUser);
+  fila[1] = limpiarTexto(nombre);
+  fila[2] = emailLimpio;
 
-  const headers = sheet.getRange(1, 1, 1, numColumnas).getValues()[0].map(h => String(h).trim());
-  const colEstado = headers.indexOf('Estado');
-  const colRol = headers.indexOf('Rol');
-  const colLogo = headers.indexOf('Logo');
+  const setCol = (name, val) => {
+    const i = headers.indexOf(name);
+    if (i !== -1) fila[i] = val;
+  };
+  setCol('Estado', 'Pendiente');
+  setCol('Rol', String(rolAsignado || 'USUARIO').trim());
+  setCol('Logo', String(logoUrl || '').trim());
 
-  if (colEstado !== -1) nuevaFila[colEstado] = 'Pendiente';
-  if (colRol !== -1) nuevaFila[colRol] = String(rolAsignado || 'USUARIO').trim();
-  if (colLogo !== -1) nuevaFila[colLogo] = String(logoUrl || '').trim();
-
-  db_crearFila(BD.WHITELIST, nuevaFila);
-  return { message: 'Usuario anadido.' };
+  db_crearFila(BD.WHITELIST, fila);
+  return { message: 'Usuario añadido.' };
 }
 
 function auth_obtenerInfoUsuario(token) {
   const payload = requerirPermiso('ver_dashboard', token);
-  const whitelist = db_leerTodo(BD.WHITELIST);
-  const usuarioDB = whitelist.find(u => String(u.Email).toLowerCase().trim() === String(payload.email).toLowerCase());
+  const usuario = db_leerTodo(BD.WHITELIST).find(u =>
+    String(u.Email).toLowerCase().trim() === String(payload.email).toLowerCase()
+  );
 
-  if (!usuarioDB || String(usuarioDB.Estado).toUpperCase().trim() !== 'ACTIVO') {
+  if (!usuario || String(usuario.Estado).toUpperCase().trim() !== 'ACTIVO') {
     throw new Error('Usuario inactivo o revocado.');
   }
 
-  const rol = String(usuarioDB.Rol || 'USUARIO').toUpperCase().trim();
-
-  // Conteos reales para la campana de notificaciones
+  const rol = String(usuario.Rol || 'USUARIO').toUpperCase().trim();
   const resenas = db_leerTodo(BD.RESENAS);
   const tokens = db_leerTodo(BD.TOKENS);
   const hoy = new Date();
@@ -171,77 +186,58 @@ function auth_obtenerInfoUsuario(token) {
     if (String(t.Estado).trim() !== 'Activo') return false;
     const f = String(t.Fecha_Envio || '').split('-');
     if (f.length < 3) return false;
-    const fecha = new Date(f[0], f[1] - 1, f[2]);
-    const dias = Math.floor((hoy - fecha) / 86400000);
-    return dias > 7;
+    return Math.floor((hoy - new Date(+f[0], +f[1] - 1, +f[2])) / 86400000) > 7;
   }).length;
 
   return {
-    userId: usuarioDB.UserId || usuarioDB.ID,
-    nombre: usuarioDB.Nombre,
-    email: usuarioDB.Email,
-    rol: usuarioDB.Rol,
-    estado: usuarioDB.Estado,
-    permisos: ROLES[rol] || ROLES['USUARIO'],
-    notificaciones: {
-      resenasNuevas: resenasNuevas,
-      seguimientosAtrasados: seguimientosAtrasados
-    }
+    userId: usuario.UserId || usuario.ID,
+    nombre: usuario.Nombre,
+    email: usuario.Email,
+    rol: usuario.Rol,
+    estado: usuario.Estado,
+    permisos: ROLES[rol] || ROLES.USUARIO,
+    notificaciones: { resenasNuevas, seguimientosAtrasados }
   };
 }
 
 function dash_actualizarEstadoUsuario(token, filaUsuario, nuevoEstado) {
   requerirPermiso('gestionar_usuarios', token);
-  db_actualizarCampos(BD.WHITELIST, filaUsuario, { "Estado": nuevoEstado });
-  return { message: "Estado actualizado." };
-}
-
-function dash_agregarUsuario(token, idUser, nombre, email, rolAsignado) {
-  requerirPermiso('gestionar_usuarios', token);
-  const emailLimpio = String(email).toLowerCase().trim();
-  const sheet = getSheet(BD.WHITELIST);
-  
-  if (db_leerTodo(BD.WHITELIST).some(u => String(u.Email).toLowerCase() === emailLimpio)) throw new Error("Correo ya registrado.");
-  
-  const numColumnas = sheet.getLastColumn();
-  let nuevaFila = new Array(numColumnas).fill(''); 
-  nuevaFila[0] = limpiarTexto(idUser); nuevaFila[1] = limpiarTexto(nombre); nuevaFila[2] = emailLimpio; 
-  
-  const headers = sheet.getRange(1, 1, 1, numColumnas).getValues()[0].map(h => String(h).trim());
-  const colEstado = headers.indexOf("Estado"); const colRol = headers.indexOf("Rol");
-  if(colEstado !== -1) nuevaFila[colEstado] = 'Pendiente'; 
-  if(colRol !== -1) nuevaFila[colRol] = String(rolAsignado || 'USUARIO').trim();    
-  
-  db_crearFila(BD.WHITELIST, nuevaFila); 
-  return { message: 'Usuario añadido.' };
+  db_actualizarCampos(BD.WHITELIST, filaUsuario, { Estado: nuevoEstado });
+  return { message: 'Estado actualizado.' };
 }
 
 function dash_llamarGemini(token, prompt) {
-  requerirPermiso('editar_resena', token); 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${SEGURIDAD.GeminiAPI}`;
-  const response = UrlFetchApp.fetch(url, { "method": "post", "contentType": "application/json", "payload": JSON.stringify({ "contents": [{ "parts": [{ "text": limpiarTexto(prompt) }] }], "generationConfig": { "temperature": 0.4 } }), "muteHttpExceptions": true });
-  const json = JSON.parse(response.getContentText());
-  
-  if (json.candidates && json.candidates.length > 0) return { texto: json.candidates[0].content.parts[0].text.trim() };
-  throw new Error("Sin respuesta de la IA.");
+  requerirPermiso('editar_resena', token);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${SEGURIDAD.GeminiAPI}`;
+  const res = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      contents: [{ parts: [{ text: limpiarTexto(prompt) }] }],
+      generationConfig: { temperature: 0.4 }
+    }),
+    muteHttpExceptions: true
+  });
+  const json = JSON.parse(res.getContentText());
+  if (json.candidates?.length) {
+    return { texto: json.candidates[0].content.parts[0].text.trim() };
+  }
+  throw new Error('Sin respuesta de la IA.');
 }
 
 function api_obtenerConfiguracionPublica() {
-  return getConfig(); 
+  return getConfig();
 }
 
 function dash_actualizarConfiguracion(token, configuracionNueva) {
-  requerirPermiso('configurar_sistema', token); 
-  
+  requerirPermiso('configurar_sistema', token);
   const sheet = getSheet(BD.CONFIG);
   const data = sheet.getDataRange().getValues();
-  
   for (let i = 1; i < data.length; i++) {
     const key = String(data[i][0]).trim();
     if (configuracionNueva[key] !== undefined) {
       sheet.getRange(i + 1, 2).setValue(configuracionNueva[key]);
     }
   }
-  
-  return { message: "Configuración del sistema actualizada correctamente." };
+  return { message: 'Configuración del sistema actualizada correctamente.' };
 }

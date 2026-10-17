@@ -9,21 +9,18 @@ export const authState = reactive({
 
 export async function fetchUserInfo(overrideToken = null) {
   const token = overrideToken || localStorage.getItem('inm_dash_token')
-  
   if (!token) {
     authState.isReady = true
     return false
   }
 
   try {
-    const payload = overrideToken ? { token: overrideToken } : {}
-    const data = await apiClient.post('get_user_info', payload) 
-    
+    const data = await apiClient.post('get_user_info', overrideToken ? { token: overrideToken } : {})
     authState.user = data
     authState.isAuthenticated = true
     return true
-  } catch (error) {
-    console.error(error.message)
+  } catch (e) {
+    console.error(e.message)
     return false
   } finally {
     authState.isReady = true
@@ -38,6 +35,5 @@ export function logout() {
 }
 
 export function hasPermission(permission) {
-  const perms = authState.user?.permisos || []
-  return perms.includes(permission)
+  return (authState.user?.permisos || []).includes(permission)
 }
