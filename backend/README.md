@@ -1,31 +1,39 @@
-# Backend - Google Apps Script
+# Backend — Google Apps Script
 
-Codigo fuente del backend del Engine Review System.
+Código fuente del API headless del Engine Review System.
 
 ## Hojas requeridas
 
 ### 1. Whitelist
+
 ```
 UserId | Nombre | Email | Estado | Rol | Logo
 ```
-Estado: Activo | Pendiente | Suspendido  
-Rol: ADMINISTRADOR | SUPERVISOR | APROBADOR | USUARIO  
-Logo: URL publica de imagen (opcional)
+
+- Estado: `Activo` | `Pendiente` | `Suspendido`
+- Rol: `ADMINISTRADOR` | `SUPERVISOR` | `APROBADOR` | `USUARIO`
+- Logo: URL pública opcional
 
 ### 2. Tokens
+
 ```
 ID_Enlace | UserId_Admin | Fecha_Envio | Nombre_Cliente | Zona_Servicio | URL_Generada | Estado
 ```
-Estado: Activo | Usado | Cancelado
+
+- Estado: `Activo` | `Usado` | `Cancelado`
 
 ### 3. Resenas
+
 ```
 ID_Resena | UserId | Fecha | Cliente | Servicio | Calificacion | Comentario | Legal_OK | Estado | Respuesta_Admin
 ```
-Estado: Pendiente | Aprobado | Archivado
 
-### 4. Configuracion
-Key-Value (col A = clave, col B = valor):
+- Estado: `Pendiente` | `Aprobado` | `Archivado`
+
+### 4. Configuracion (clave-valor)
+
+Columna A = clave, B = valor:
+
 ```
 Empresa_Nombre
 Color_Primario
@@ -36,46 +44,49 @@ URL_Frontend_App
 
 ## Secretos (Script Properties)
 
-Project Settings -> Script properties:
+Project Settings → Script properties:
 
-| Property             | Descripcion |
-|----------------------|-------------|
-| SECRET_JWT           | Firma JWT |
-| SECRET_FIRMA         | Firma enlaces |
-| RECAPTCHA_PROJECT    | Project ID |
-| RECAPTCHA_API_KEY    | API Key |
-| RECAPTCHA_SITE_KEY   | Site Key |
-| GEMINI_API_KEY       | Gemini Key |
+| Property | Descripción |
+| --- | --- |
+| SECRET_JWT | Firma JWT de sesión |
+| SECRET_FIRMA | Firma de enlaces de reseña |
+| RECAPTCHA_PROJECT | Project ID reCAPTCHA Enterprise |
+| RECAPTCHA_API_KEY | API Key reCAPTCHA |
+| RECAPTCHA_SITE_KEY | Site Key reCAPTCHA |
+| GEMINI_API_KEY | API Key Gemini |
 
-Nunca subas estos valores al repositorio.
+Nunca subir estos valores al repositorio.
+
+## Archivos
+
+| Archivo | Rol |
+| --- | --- |
+| Config.gs | BD, ROLES, SEGURIDAD, getConfig |
+| DB_Core.gs | getSheet, crear/leer/actualizar filas |
+| Auth.gs | reCAPTCHA, OTP, JWT, requerirPermiso |
+| Utils.gs | sanitización, correos, cron, notificaciones |
+| API_Dashboard.gs | casos de uso de negocio |
+| WebApp.gs | doGet / doPost (router por `action`) |
 
 ## Despliegue
 
-1. Spreadsheet -> Extensiones -> Apps Script
-2. Pega los archivos .gs de esta carpeta (Config.gs + tus archivos existentes actualizados)
-3. Configura Script Properties
-4. Deploy as Web App (Execute as: Me, Access: Anyone)
-5. Copia la URL /exec a src/services/api.js del frontend
+1. Spreadsheet → Extensiones → Apps Script  
+2. Pegar/actualizar los `.gs` de esta carpeta  
+3. Configurar Script Properties  
+4. Deploy → Web App (Execute as: **Me**, Access: **Anyone**)  
+5. Copiar URL `/exec` a `src/services/api.js` del frontend  
 
 ## Triggers
 
-- cron_dispararRecordatorios -> time-driven diario
+- `cron_dispararRecordatorios` — time-driven **diario** (recordatorio día 7 a gestores).
 
-## Parches incluidos
+## Contrato API
 
-- `Config.gs` — getSecret() + BD + ROLES + getConfig()
-- `PATCH_auth_obtenerInfoUsuario.gs` — inyecta notificaciones reales
-- `PATCH_users_logo.gs` — columna Logo en Whitelist + add_user/get_users
-- `MIGRATE_SECRETS.md` — como mover secretos fuera del codigo
+Ver [docs/api/openapi.yaml](../docs/api/openapi.yaml) y la matriz de acciones en [docs/requirements/functional.md](../docs/requirements/functional.md).
 
-## Logo de usuarios
+Respuesta unificada:
 
-Anade en la hoja **Whitelist** una columna con header exacto:
-
+```json
+{ "status": "success", "data": { } }
+{ "status": "error", "message": "..." }
 ```
-Logo
-```
-
-Despues aplica `PATCH_users_logo.gs` (reemplaza `dash_obtenerUsuarios` y `dash_agregarUsuario`, y pasa `payload.logo` en el case `add_user` de `doPost`).
-
-Los logos de empresa (`Logo_Horizontal`, `Logo_Vertical`) ya viven en **Configuracion** como URL.
