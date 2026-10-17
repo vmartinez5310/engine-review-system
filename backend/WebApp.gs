@@ -26,7 +26,9 @@ function doPost(e) {
       call_ai: () => dash_llamarGemini(token, payload.prompt),
       get_public_config: () => api_obtenerConfiguracionPublica(),
       update_config: () => dash_actualizarConfiguracion(token, payload.configuracion),
-      get_user_info: () => auth_obtenerInfoUsuario(token)
+      get_user_info: () => auth_obtenerInfoUsuario(token),
+      get_kpis: () => dash_obtenerKpis(token),
+      get_tokens: () => dash_obtenerTokens(token)
     };
 
     const handler = handlers[action];
