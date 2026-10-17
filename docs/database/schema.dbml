@@ -1,60 +1,64 @@
-// Generado a partir de Engine Review System SRS
+// Conceptual schema aligned to Google Sheets snapshot
+// Physical store: one Sheet per Table; headers = column names
+
+Enum EstadoUsuarioEnum {
+  Activo
+  Pendiente
+  Suspendido
+}
+
+Enum RolUsuarioEnum {
+  ADMINISTRADOR
+  SUPERVISOR
+  APROBADOR
+  USUARIO
+}
 
 Enum EstadoTokenEnum {
   Activo
   Usado
-  Expirado
-  Revocado
+  Cancelado
 }
 
-Enum EstadoModeracionEnum {
+Enum EstadoResenaEnum {
   Pendiente
   Aprobado
   Archivado
-  Rechazado
 }
 
-Enum RolUsuarioEnum {
-  Developer
-  Admin
-  "Usuario Normal"
+Table Whitelist {
+  UserId string [pk]
+  Nombre string [not null]
+  Email string [unique, not null]
+  Estado EstadoUsuarioEnum [not null]
+  Rol RolUsuarioEnum [not null]
+  Logo string [note: 'Optional public image URL']
 }
 
 Table Tokens {
-  ID_Enlace UUID [pk, note: 'Identificador único del token/enlace de invitación']
-  UserId_Admin UUID [not null, note: 'Identificador del usuario/administrador']
-  Fecha_Envio DATETIME [not null]
-  Nombre_Cliente VARCHAR(150) [not null]
-  Zona_Servicio VARCHAR(100)
+  ID_Enlace string [pk, note: 'LNK-XXXXXX']
+  UserId_Admin string [not null, ref: > Whitelist.UserId]
+  Fecha_Envio date [not null]
+  Nombre_Cliente string [not null]
+  Zona_Servicio string
+  URL_Generada string [not null]
   Estado EstadoTokenEnum [not null]
 }
 
 Table Resenas {
-  ID_Resena UUID [pk]
-  ID_Enlace UUID [not null, ref: > Tokens.ID_Enlace]
-  Calificacion DECIMAL(2,1) [not null]
-  Comentario TEXT
-  Nombre_Publico VARCHAR(150) [not null]
-  Aviso_Privacidad BOOLEAN [not null]
-  Autorizacion_Publicacion BOOLEAN [not null]
-  Estado_Moderacion EstadoModeracionEnum [not null]
-  Respuesta_Admin TEXT
-  Fecha_Respuesta DATETIME
-}
-
-Table Whitelist {
-  UserId UUID [pk]
-  Email VARCHAR(255) [unique, not null]
-  Rol RolUsuarioEnum [not null]
-  Activo BOOLEAN [not null]
+  ID_Resena string [pk, note: 'RES-XXXXXXXX']
+  UserId string [not null, note: 'Whitelist.UserId or WEB']
+  Fecha date [not null]
+  Cliente string [not null]
+  Servicio string
+  Calificacion number [not null, note: '0-5']
+  Comentario text
+  Legal_OK boolean [not null]
+  Estado EstadoResenaEnum [not null]
+  Respuesta_Admin text
 }
 
 Table Configuracion {
-  ID_Config INT [pk]
-  Nombre_Empresa VARCHAR(150) [not null]
-  Color_Primario VARCHAR(7) [not null]
-  Color_Acento VARCHAR(7) [not null]
-  URL_Logo_Horizontal VARCHAR(500)
-  URL_Logo_Icono VARCHAR(500)
-  URL_Publica_Base VARCHAR(255) [not null]
+  Clave string [pk, note: 'Empresa_Nombre | Color_Primario | Logo_Horizontal | Logo_Vertical | URL_Frontend_App']
+  Valor string
 }
