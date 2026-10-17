@@ -1,116 +1,95 @@
 # Engine Review System
 
-Sistema completo de gestion de resenas y prueba social para **Inmobiliarte 22 / Easy Broker**.
+Sistema de gestión de reseñas y prueba social (Inmobiliarte 22 / Easy Broker y usos genéricos).
 
-Incluye:
-- **Dashboard interno** (Vue 3 + Vite + Tailwind) para moderar resenas, generar enlaces, gestionar usuarios y configuracion.
-- **Backend headless** en Google Apps Script + Google Sheets.
-- Endpoints publicos listos para un **widget embebible** (carousel de resenas aprobadas).
+- **Dashboard** — Vue 3 + Vite + Tailwind (OTP, moderación, enlaces, usuarios, config).
+- **Backend headless** — Google Apps Script + Google Sheets.
+- **API pública** — reseñas aprobadas y alta de reseña con reCAPTCHA.
+
+Documentación completa en [`docs/`](docs/).
 
 ---
 
-## Arquitectura
+## Arquitectura (snapshot)
 
 ```
-[ Vue 3 Dashboard ]  ----POST JSON---->  [ Google Apps Script WebApp ]
+[ Vue 3 Dashboard ]  --POST {action,payload,token}-->  [ GAS WebApp ]
         |
-        +-- Auth: OTP por correo + JWT (24h)
-        +-- RBAC por roles
+        +-- Auth: OTP correo + JWT 24h
+        +-- RBAC por permisos
         +-- Sheets: Whitelist, Tokens, Resenas, Configuracion
 ```
 
+Detalle: [docs/architecture/system_design.md](docs/architecture/system_design.md).
+
 ### Roles y permisos
 
-| Rol            | Permisos |
-|----------------|----------|
-| ADMINISTRADOR  | ver_dashboard, generar_enlace, ver_seguimientos, editar_resena, gestionar_usuarios, configurar_sistema |
-| SUPERVISOR     | ver_dashboard, generar_enlace, ver_seguimientos, editar_resena |
-| APROBADOR      | ver_dashboard, editar_resena |
-| USUARIO        | ver_dashboard, generar_enlace, ver_seguimientos |
+| Rol | Permisos |
+| --- | --- |
+| ADMINISTRADOR | ver_dashboard, generar_enlace, ver_seguimientos, editar_resena, gestionar_usuarios, configurar_sistema |
+| SUPERVISOR | ver_dashboard, generar_enlace, ver_seguimientos, editar_resena |
+| APROBADOR | ver_dashboard, editar_resena |
+| USUARIO | ver_dashboard, generar_enlace, ver_seguimientos |
 
-### Hojas de calculo (GAS)
+### Hojas (GAS)
 
-| Hoja           | Uso |
-|----------------|-----|
-| Whitelist      | Usuarios (UserId, Nombre, Email, Estado, Rol) |
-| Tokens         | Enlaces de solicitud de resena (seguimiento) |
-| Resenas        | Resenas recibidas |
-| Configuracion  | Key-Value (Empresa_Nombre, Color_Primario, Logo_*, URL_Frontend_App) |
+| Hoja | Uso |
+| --- | --- |
+| Whitelist | UserId, Nombre, Email, Estado, Rol, Logo |
+| Tokens | ID_Enlace, UserId_Admin, Fecha_Envio, Nombre_Cliente, Zona_Servicio, URL_Generada, Estado |
+| Resenas | ID_Resena, UserId, Fecha, Cliente, Servicio, Calificacion, Comentario, Legal_OK, Estado, Respuesta_Admin |
+| Configuracion | KV: Empresa_Nombre, Color_Primario, Logo_Horizontal, Logo_Vertical, URL_Frontend_App |
+
+Diccionario: [docs/database/data_dictionary.md](docs/database/data_dictionary.md).
 
 ---
 
 ## Frontend
 
-### Stack
-- Vue 3 (`<script setup>`)
-- Vite 8
-- Tailwind CSS 3
-- SweetAlert2
-
-### Desarrollo local
-
 ```bash
 npm install
-npm run dev
+npm run dev    # desarrollo
+npm run build  # producción
 ```
 
-### Build
+URL del backend: `src/services/api.js` (`API_URL` del deployment `/exec`).
 
-```bash
-npm run build
-```
+## Backend
 
-La URL del backend se define en `src/services/api.js`.
+Código en `backend/`. Despliegue y secretos: [backend/README.md](backend/README.md).
 
----
+Script Properties: `SECRET_JWT`, `SECRET_FIRMA`, `RECAPTCHA_PROJECT`, `RECAPTCHA_API_KEY`, `RECAPTCHA_SITE_KEY`, `GEMINI_API_KEY`.
 
-## Backend (Google Apps Script)
+## Documentación
 
-El codigo fuente vive en la carpeta `backend/`.
+| Área | Ruta |
+| --- | --- |
+| Requisitos funcionales | [docs/requirements/functional.md](docs/requirements/functional.md) |
+| Requisitos no funcionales | [docs/requirements/non_functional.md](docs/requirements/non_functional.md) |
+| Matriz de cobertura | [docs/coverage_matrix.md](docs/coverage_matrix.md) |
+| Arquitectura | [docs/architecture/system_design.md](docs/architecture/system_design.md) |
+| ADR Auth | [docs/architecture/adr/0001-otp-jwt-auth.md](docs/architecture/adr/0001-otp-jwt-auth.md) |
+| API (OpenAPI) | [docs/api/openapi.yaml](docs/api/openapi.yaml) |
+| Datos | [docs/database/data_dictionary.md](docs/database/data_dictionary.md) |
+| UI/UX | [docs/design/ui_ux_spec.md](docs/design/ui_ux_spec.md) |
 
-### Secretos (obligatorio)
+## Reglas de diseño del proyecto
 
-**No** se suben secretos al repositorio. Configuralos en:
+1. Cero lógica de negocio pesada en frontend  
+2. Cero mocks / datos falsos  
+3. RBAC por permisos reales en servidor  
+4. Mobile-first  
+5. Modularidad de vistas  
+6. Login OTP-only (sin contraseña en Perfil)
 
-> Apps Script -> Project Settings -> Script properties
-
-| Property            | Descripcion |
-|---------------------|-------------|
-| SECRET_JWT          | Firma JWT de sesion |
-| SECRET_FIRMA        | Firma de los enlaces de resena |
-| RECAPTCHA_PROJECT   | Project ID reCAPTCHA Enterprise |
-| RECAPTCHA_API_KEY   | API Key reCAPTCHA |
-| RECAPTCHA_SITE_KEY  | Site Key reCAPTCHA |
-| GEMINI_API_KEY      | API Key Gemini |
-
-Ver `backend/README.md` para el detalle de despliegue.
-
----
-
-## Reglas de diseno (proyecto)
-
-1. Cero logica de negocio pesada en frontend
-2. Cero mocks / datos falsos
-3. RBAC por permisos reales
-4. Mobile-first (44x44 px touch targets)
-5. Modularidad de vistas
-6. Login OTP-only (no hay cambio de contrasena en Perfil)
-
----
-
-## Estructura del repo
+## Estructura
 
 ```
-backend/                 # Codigo fuente Google Apps Script
+backend/          # Google Apps Script
+docs/             # Requisitos, arquitectura, API, datos, UI
 src/
-  components/
-    layout/              # DashboardLayout
-    ui/                  # DataTable, BaseButton, BaseModal, ...
-  composables/           # useAuth
-  services/              # api.js
-  views/
-    admin/               # UsuariosView, SistemaView, ConfigView
-    auth/                # LoginView
-    core/                # ResenasView, GenerarResenaModal
-    user/                # PerfilView
+  components/     # layout + ui
+  composables/    # useAuth
+  services/       # apiClient
+  views/          # auth, core, admin, user
 ```

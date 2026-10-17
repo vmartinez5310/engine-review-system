@@ -1,19 +1,39 @@
 # Requisitos No Funcionales (RNF)
 
-Los requisitos no funcionales definen los atributos de calidad, restricciones técnicas y estándares de desempeño del sistema.
+Atributos de calidad alineados al snapshot implementado (GAS + Vue Dashboard).
 
-## 4.1 Rendimiento y Tiempo de Respuesta (RNF-PERF)
-* **RNF-01 (Autenticación OTP y JWT):** El Dashboard requerirá inicio de sesión mediante código OTP y tokens JWT para mantener la sesión activa de forma persistente tras actualizar la página, evitando el almacenamiento tradicional de contraseñas.
-* **RNF-02 (Diseño UI/UX Premium & Theme):** Interfaz minimalista tipo *Premium Bank* con navegación Side Menu (colapsable), degradados elegantes y una paleta estricta de 3 colores (oscuro, claro y color de acento dinámico configurado por el Administrador).
+## 4.1 Seguridad (RNF-SEC)
 
-## 4.2 Seguridad y Privacidad (RNF-SEC)
-* **RNF-03 (Seguridad en Formulario y reCAPTCHA):** Integración de reCAPTCHA en el widget de reseña para la protección contra spam y verificación del token en backend antes del procesamiento de la respuesta.
-* **RNF-04 (Arquitectura del Dashboard y Navegación):** Estructura organizada en: Tablero de KPIs (vista principal), Menú Reseñas (Tabla de reseñas recibidas y Tabla de tokens por completar), Menú Usuarios (Gestión) y Módulo de Configuración.
+| ID | Requisito | Estado | Implementación |
+| :---- | :---- | :---- | :---- |
+| **RNF-01** | Auth sin contraseña (OTP + JWT) | Implementado | OTP 6 dígitos (CacheService, TTL 600s). JWT HS256, exp 24h, firmado con `SECRET_JWT`. Almacenamiento de sesión en `localStorage` (`inm_dash_token`). |
+| **RNF-02** | Protección anti-spam en envío público | Implementado | reCAPTCHA Enterprise en `submit_review` (`validarRecaptcha`, score ≥ 0.5). |
+| **RNF-03** | Firmas de enlaces de reseña | Implementado | Token de invitación = JWT web-safe firmado con `SECRET_FIRMA`. |
+| **RNF-04** | Rate-limit de OTP | Implementado | Tras 5 OTP incorrectos: lock 15 min (`LOCK_*` en cache). |
+| **RNF-05** | RBAC por permiso | Implementado | `requerirPermiso(permiso, token)` en cada endpoint privado. |
+| **RNF-06** | Secretos fuera del código | Implementado | Script Properties vía `getSecret` / getters `SEGURIDAD`. |
 
-## 4.3 Usabilidad y Accesibilidad (RNF-USA)
-* **RNF-05 (Interfaz Intuitiva):** La interfaz debe ser receptiva (responsive) y permitir completar la tarea principal en no más de [X] clics/pasos.
-* **RNF-06 (Accesibilidad):** Cumplimiento con estándares WCAG 2.1 Nivel AA.
+*Nota:* El ADR histórico mencionaba Redis + refresh token HttpOnly. El snapshot **no** usa Redis ni refresh token; usa CacheService + JWT único 24h. Cualquier evolución a access/refresh queda como mejora futura sin invalidar RNF-01.
 
-## 4.4 Disponibilidad y Mantenibilidad (RNF-MAINT)
-* **RNF-07 (Disponibilidad / Uptime):** El sistema debe garantizar un nivel de disponibilidad del [99.9%] mensual.
-* **RNF-08 (Respaldos):** Se deben realizar copias de seguridad automáticas con una frecuencia de [diaria/semanal].
+## 4.2 UX / UI (RNF-UX)
+
+| ID | Requisito | Estado | Detalle |
+| :---- | :---- | :---- | :---- |
+| **RNF-07** | Tema claro/oscuro + color de marca | Implementado | Clase `dark` en `documentElement`; `--brand-color` desde config pública. |
+| **RNF-08** | Mobile-first / touch targets | Diseño de proyecto | Regla de diseño: targets ~44×44 px; layout responsive Tailwind. |
+| **RNF-09** | Navegación modular | Implementado | Vistas: Login, Reseñas, Seguimientos (en core), Usuarios, Config, Sistema, Perfil. Layout con sidebar. |
+
+## 4.3 Disponibilidad y operacion (RNF-OPS)
+
+| ID | Requisito | Estado | Detalle |
+| :---- | :---- | :---- | :---- |
+| **RNF-10** | Backend serverless | Implementado | Google Apps Script Web App (Execute as: Me, Access: Anyone). |
+| **RNF-11** | Health check | Implementado | `doGet` → JSON status/version. |
+| **RNF-12** | Recordatorios programados | Implementado | Trigger time-driven diario → `cron_dispararRecordatorios` (día 7). |
+| **RNF-13** | Backups | Responsabilidad del operador | Respaldos de Spreadsheet (historial de versiones de Google / export). Objetivo operativo: al menos semanal. |
+
+## 4.4 Mantenibilidad (RNF-MAINT)
+
+* Código backend modular: Config, DB_Core, Auth, Utils, API_Dashboard, WebApp.
+* Frontend: componentes UI base, composable `useAuth`, `apiClient` único.
+* Principios de proyecto: cero mocks, cero lógica de negocio pesada en frontend, RBAC real.
