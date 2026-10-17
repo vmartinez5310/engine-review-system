@@ -6,10 +6,19 @@ const BD = {
 };
 
 const ROLES = {
-  'ADMINISTRADOR': ['ver_dashboard', 'generar_enlace', 'ver_seguimientos', 'editar_resena', 'gestionar_usuarios', 'configurar_sistema'],
-  'SUPERVISOR': ['ver_dashboard', 'generar_enlace', 'ver_seguimientos', 'editar_resena'],
-  'APROBADOR': ['ver_dashboard', 'editar_resena'],
-  'USUARIO': ['ver_dashboard', 'generar_enlace', 'ver_seguimientos']
+  ADMINISTRADOR: ['ver_dashboard', 'generar_enlace', 'ver_seguimientos', 'editar_resena', 'gestionar_usuarios', 'configurar_sistema'],
+  SUPERVISOR: ['ver_dashboard', 'generar_enlace', 'ver_seguimientos', 'editar_resena'],
+  APROBADOR: ['ver_dashboard', 'editar_resena'],
+  USUARIO: ['ver_dashboard', 'generar_enlace', 'ver_seguimientos']
+};
+
+const SEGURIDAD = {
+  get SECRET_JWT() { return getSecret('SECRET_JWT'); },
+  get SECRET_FIRMA() { return getSecret('SECRET_FIRMA'); },
+  get RECAPTCHA_PROJECT() { return getSecret('RECAPTCHA_PROJECT'); },
+  get RECAPTCHA_API_KEY() { return getSecret('RECAPTCHA_API_KEY'); },
+  get RECAPTCHA_SITE_KEY() { return getSecret('RECAPTCHA_SITE_KEY'); },
+  get GeminiAPI() { return getSecret('GEMINI_API_KEY'); }
 };
 
 function getSecret(key) {
@@ -19,17 +28,19 @@ function getSecret(key) {
 }
 
 function getConfig() {
-  let config = { nombre: 'Sistema', color: '#333333', logoH: '', logoV: '', urlFrontend: '' };
+  const config = { nombre: 'Sistema', color: '#333333', logoH: '', logoV: '', urlFrontend: '' };
   try {
     const data = getSheet(BD.CONFIG).getDataRange().getValues();
+    const map = {
+      Empresa_Nombre: 'nombre',
+      Color_Primario: 'color',
+      Logo_Horizontal: 'logoH',
+      Logo_Vertical: 'logoV',
+      URL_Frontend_App: 'urlFrontend'
+    };
     data.forEach(row => {
       const key = String(row[0]).trim();
-      const val = String(row[1]).trim();
-      if (key === 'Empresa_Nombre') config.nombre = val;
-      if (key === 'Color_Primario') config.color = val;
-      if (key === 'Logo_Horizontal') config.logoH = val;
-      if (key === 'Logo_Vertical') config.logoV = val;
-      if (key === 'URL_Frontend_App') config.urlFrontend = val;
+      if (map[key]) config[map[key]] = String(row[1]).trim();
     });
   } catch (e) {}
   return config;
