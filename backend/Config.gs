@@ -1,8 +1,3 @@
-// ==========================================
-// Archivo: Config.gs
-// Secretos se leen de Script Properties (nunca hardcodear en repo)
-// ==========================================
-
 const BD = {
   WHITELIST: 'Whitelist',
   TOKENS: 'Tokens',
@@ -17,11 +12,6 @@ const ROLES = {
   'USUARIO': ['ver_dashboard', 'generar_enlace', 'ver_seguimientos']
 };
 
-/**
- * Lee un secreto desde Script Properties.
- * Configura: Project Settings -> Script properties
- * Keys: SECRET_JWT, SECRET_FIRMA, RECAPTCHA_PROJECT, RECAPTCHA_API_KEY, RECAPTCHA_SITE_KEY, GEMINI_API_KEY
- */
 function getSecret(key) {
   const val = PropertiesService.getScriptProperties().getProperty(key);
   if (!val) throw new Error('Falta Script Property: ' + key);
