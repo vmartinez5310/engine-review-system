@@ -13,6 +13,7 @@ import BaseInput from './components/ui/BaseInput.vue'
 import BaseSelect from './components/ui/BaseSelect.vue'
 import BaseStarRating from './components/ui/BaseStarRating.vue'
 import EmptyState from './components/ui/EmptyState.vue'
+import SkeletonBlock from './components/ui/SkeletonBlock.vue'
 
 const app = createApp(App)
 ;[
@@ -23,7 +24,8 @@ const app = createApp(App)
   ['BaseInput', BaseInput],
   ['BaseSelect', BaseSelect],
   ['BaseStarRating', BaseStarRating],
-  ['EmptyState', EmptyState]
+  ['EmptyState', EmptyState],
+  ['SkeletonBlock', SkeletonBlock]
 ].forEach(([name, comp]) => app.component(name, comp))
 
 app.mount(document.getElementById('engine-dashboard-root') || document.body)
