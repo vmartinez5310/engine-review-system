@@ -1,53 +1,66 @@
-# Data Dictionary - Engine Review System
+# Data Dictionary — Engine Review System
 
-A continuación se detallan las tablas y el catálogo consolidado de enumeraciones (Enums) que conforman la estructura de la base de datos del sistema Engine Review System.
+Persistencia real: **Google Sheets**. Cada "tabla" es una hoja; la fila 1 son encabezados. El acceso se hace vía `DB_Core.gs` (`db_leerTodo`, `db_crearFila`, `db_actualizarCampos`).
 
-## 7.1 Tabla Tokens
-| Campo | Tipo de Dato | Restricción | Descripción |
+## 7.1 Hoja Whitelist
+
+| Campo | Tipo lógico | Req | Descripción |
 | :---- | :---- | :---- | :---- |
-| **ID_Enlace** | UUID / INT | PK, NOT NULL | Identificador único del token/enlace de invitación. |
-| **UserId_Admin** | UUID / INT | FK, NOT NULL | Identificador del usuario/administrador que generó la invitación. |
-| **Fecha_Envio** | DATETIME | NOT NULL | Fecha y hora en la que se generó y envió el token. |
-| **Nombre_Cliente** | VARCHAR(150) | NOT NULL | Nombre del cliente al que se le solicita la reseña. |
-| **Zona_Servicio** | VARCHAR(100) | NULL | Zona o sucursal donde se prestó el servicio. |
-| **Estado** | ENUM | NOT NULL | Estado del token: Activo, Usado, Expirado, Revocado. |
+| UserId | string | PK | Identificador de usuario/asesor |
+| Nombre | string | sí | Nombre visible |
+| Email | string | único | Correo para OTP (case-insensitive) |
+| Estado | enum | sí | `Activo` \| `Pendiente` \| `Suspendido` |
+| Rol | enum | sí | `ADMINISTRADOR` \| `SUPERVISOR` \| `APROBADOR` \| `USUARIO` |
+| Logo | URL string | no | Avatar / logo del usuario |
 
-## 7.2 Tabla Resenas
-| Campo | Tipo de Dato | Restricción | Descripción |
+## 7.2 Hoja Tokens
+
+| Campo | Tipo lógico | Req | Descripción |
 | :---- | :---- | :---- | :---- |
-| **ID_Resena** | UUID / INT | PK, NOT NULL | Identificador único de la reseña. |
-| **ID_Enlace** | UUID / INT | FK, NOT NULL | Referencia al token/enlace utilizado para enviar la reseña. |
-| **Calificacion** | DECIMAL(2,1) | NOT NULL | Puntuación otorgada por el cliente (0.0 a 5.0). |
-| **Comentario** | TEXT | NULL | Texto explicativo de la experiencia del cliente. |
-| **Nombre_Publico** | VARCHAR(150) | NOT NULL | Nombre visible con el que se publicará la reseña. |
-| **Aviso_Privacidad** | BOOLEAN | NOT NULL | Aceptación de los términos de privacidad por el cliente. |
-| **Autorizacion_Publicacion** | BOOLEAN | NOT NULL | Consentimiento expreso para la publicación pública de la reseña. |
-| **Estado_Moderacion** | ENUM | NOT NULL | Estado de revisión: Pendiente, Aprobado, Archivado, Rechazado. |
-| **Respuesta_Admin** | TEXT | NULL | Respuesta redactada por el equipo administrativo. |
-| **Fecha_Respuesta** | DATETIME | NULL | Fecha y hora en la que se registró la respuesta del administrador. |
+| ID_Enlace | string | PK | Ej. `LNK-XXXXXX` |
+| UserId_Admin | string | FK lógico | Gestor que generó el enlace |
+| Fecha_Envio | date `yyyy-MM-dd` | sí | Fecha de emisión |
+| Nombre_Cliente | string | sí | Cliente invitado |
+| Zona_Servicio | string | sí | Servicio / zona |
+| URL_Generada | URL | sí | Link firmado completo |
+| Estado | enum | sí | `Activo` \| `Usado` \| `Cancelado` |
 
-## 7.3 Tabla Whitelist
-| Campo | Tipo de Dato | Restricción | Descripción |
+## 7.3 Hoja Resenas
+
+| Campo | Tipo lógico | Req | Descripción |
 | :---- | :---- | :---- | :---- |
-| **UserId** | UUID / INT | PK, NOT NULL | Identificador único del usuario interno. |
-| **Email** | VARCHAR(255) | UNIQUE, NOT NULL | Correo electrónico institucional o registrado del usuario. |
-| **Rol** | ENUM | NOT NULL | Rol asignado: Developer, Admin, Usuario Normal. |
-| **Activo** | BOOLEAN | NOT NULL | Indica si el acceso del usuario está habilitado o suspendido. |
+| ID_Resena | string | PK | Ej. `RES-XXXXXXXX` |
+| UserId | string | sí | Gestor asociado o `WEB` |
+| Fecha | date `yyyy-MM-dd` | sí | Fecha de registro |
+| Cliente | string | sí | Nombre público |
+| Servicio | string | no | Zona / servicio declarado |
+| Calificacion | number | sí | 0–5 |
+| Comentario | text | no | Experiencia |
+| Legal_OK | boolean | sí | Aceptación de aviso / publicación |
+| Estado | enum | sí | `Pendiente` \| `Aprobado` \| `Archivado` |
+| Respuesta_Admin | text | no | Respuesta pública del equipo |
 
-## 7.4 Tabla Configuracion
-| Campo | Tipo de Dato | Restricción | Descripción |
-| :---- | :---- | :---- | :---- |
-| **ID_Config** | INT | PK, NOT NULL | Identificador del registro de configuración. |
-| **Nombre_Empresa** | VARCHAR(150) | NOT NULL | Nombre de la empresa desplegado en el widget y comunicaciones. |
-| **Color_Primario** | VARCHAR(7) | NOT NULL | Código de color hexadecimal primario (ej. #0F172A). |
-| **Color_Acento** | VARCHAR(7) | NOT NULL | Código de color hexadecimal de acento. |
-| **URL_Logo_Horizontal** | VARCHAR(500) | NULL | Enlace directo al recurso de imagen del logo horizontal. |
-| **URL_Logo_Icono** | VARCHAR(500) | NULL | Enlace directo al recurso de imagen del logo vertical o ícono. |
-| **URL_Publica_Base** | VARCHAR(255) | NOT NULL | URL base para la construcción de enlaces de invitación públicos. |
+*Nota de cobertura:* Documentación previa incluía `ID_Enlace`, `Autorizacion_Publicacion` separada y `Fecha_Respuesta`. En el snapshot, el vínculo al token se resuelve al marcar el token `Usado` y el consentimiento se concentra en `Legal_OK`. Campos adicionales pueden añadirse a la hoja sin romper lecturas por encabezado.
 
-## 7.5 Catálogo Consolidado de Enums
-| Nombre del Enum | Valores Permitidos | Descripción / Uso |
+## 7.4 Hoja Configuracion (clave-valor)
+
+| Clave (col A) | Valor (col B) | Uso |
 | :---- | :---- | :---- |
-| **EstadoTokenEnum** | 'Activo', 'Usado', 'Expirado', 'Revocado' | Control del ciclo de vida de las invitaciones a reseñas en la tabla Tokens. |
-| **EstadoModeracionEnum** | 'Pendiente', 'Aprobado', 'Archivado', 'Rechazado' | Fases de revisión administrativa para publicaciones en la tabla Resenas. |
-| **RolUsuarioEnum** | 'Developer', 'Admin', 'Usuario Normal' | Niveles de acceso y permisos dentro de la plataforma en la tabla Whitelist. |
+| Empresa_Nombre | string | Nombre de marca |
+| Color_Primario | hex | `--brand-color` / correos |
+| Logo_Horizontal | URL | Header / login |
+| Logo_Vertical | URL | Ícono / login |
+| URL_Frontend_App | URL base | Construcción de enlaces de invitación |
+
+## 7.5 Enums efectivos
+
+| Enum | Valores | Uso |
+| :---- | :---- | :---- |
+| EstadoUsuario | Activo, Pendiente, Suspendido | Whitelist |
+| RolUsuario | ADMINISTRADOR, SUPERVISOR, APROBADOR, USUARIO | Whitelist + ROLES |
+| EstadoToken | Activo, Usado, Cancelado | Tokens |
+| EstadoResena | Pendiente, Aprobado, Archivado | Resenas |
+
+## 7.6 Mapeo con modelo relacional aspiracional
+
+El archivo `schema.dbml` se mantiene como **modelo conceptual**. Donde difiere (nombres de rol, estados de token, columnas de Resenas), prevalece este diccionario y las hojas reales.

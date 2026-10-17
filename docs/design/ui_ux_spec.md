@@ -1,37 +1,54 @@
-# UI/UX Specification
+# UI/UX Specification — Dashboard
 
-## Design Concept
-Based on the visual reference and RNF-02, the Dashboard utilizes a **Premium Bank** dark theme layout. It is minimalistic, highly legible, and uses strict color contrast.
+Alineado al frontend Vue 3 + Tailwind del snapshot y a RNF-07/RNF-08.
 
-## Color Palette & Typography
-* **Background:** Dark Navy/Slate (e.g., `#151B2B` or similar dark tone).
-* **Surface/Panels:** Slightly lighter dark slate for content separation.
-* **Accent Color:** Cyan/Teal (e.g., `#38BDF8`). Used for the primary active menu indicator, the '+ Pedir Reseña' button, and star ratings.
-* **Text:** White/Light Gray for primary text, muted gray for secondary text and table headers.
+## Design principles
 
-## Layout Components (Dashboard - Centro de Reseñas)
+* Mobile-first; controles principales con área táctil generosa (~44px).
+* Color de marca dinámico (`--brand-color` desde `Color_Primario`).
+* Soporte **light / dark** (`class="dark"` en `html`, preferencia sistema o `localStorage.theme`).
+* Componentes base reutilizables: `BaseButton`, `BaseInput`, `BaseSelect`, `BaseModal`, `BaseStarRating`, `DataTable`, `StatusBadge`, `EmptyState`.
 
-### 1. Sidebar (Side Menu)
-* **Status:** Collapsible.
-* **Navigation Items:**
-  * `Reseñas` (Active state highlighted with Accent Color)
-  * `Usuarios`
-  * `Configuración`
-* **Footer Items:** `Mi Perfil`, `Cerrar Sesión`.
+## Structure
 
-### 2. Top Header
-* **Breadcrumbs:** `Dashboard / Centro de Reseñas`
-* **User Profile Widget:** Displays Notification Bell icon, User Name, Role (`ADMINISTRADOR`), and User Avatar (Initials).
+### Auth — LoginView
 
-### 3. Main Content Area (Review Management)
-* **Navigation Tabs:** `Bandeja de Entrada` (Active) | `Por Evaluar`
-* **Action Bar:**
-  * Search Input: `Buscar en reseñas...`
-  * Dropdowns: `Columnas`, Filters (`Todos`)
-  * Primary Action Button: `+ Pedir Reseña` (Accent Color).
-* **Data Table:**
-  * Columns: `FECHA`, `CLIENTE`, `CALIF.` (Star icons), `RESEÑA` (Snippet of text), `ESTADO`.
-  * Status Badges: 
-    * `Aprobado`: Hollow badge with green text/border.
-    * `Pendiente`: Hollow badge with orange/warning text/border.
-* **Pagination Footer:** Rows per page selector (`Mostrar 10`), item counter (`Mostrando 1 al 10 de 11`), and `< Anterior` / `Siguiente >` buttons.
+* Paso 1: email → `request_otp`.
+* Paso 2: OTP 6 dígitos → `verify_otp` → emite `login-success`.
+* Logo: vertical → horizontal → inicial del nombre de empresa.
+
+### Shell — DashboardLayout
+
+* Sidebar colapsable con entradas condicionadas por `hasPermission`.
+* Áreas típicas: Reseñas, Seguimientos / tokens, Usuarios (gestión), Configuración / Sistema, Perfil.
+* Header: notificaciones (conteos de `get_user_info`), identidad, logout.
+
+### Core
+
+* **ResenasView:** tabla de reseñas, filtros, badges de estado (Pendiente / Aprobado / Archivado), edición de respuesta, estrellas.
+* **GenerarResenaModal:** nombre + servicio → `generate_link` → muestra URL (QR / share: mejora planificada).
+
+### Admin / User
+
+* **UsuariosView:** listado Whitelist, alta (id, nombre, email, rol, logo), cambio de estado.
+* **ConfigView / SistemaView:** edición de KV de marca y parámetros de sistema.
+* **PerfilView:** datos de sesión; **sin** cambio de contraseña (OTP-only).
+
+## Status badges
+
+| Estado reseña | Tratamiento visual sugerido |
+| :---- | :---- |
+| Pendiente | Badge warning / ámbar |
+| Aprobado | Badge success / verde |
+| Archivado | Badge neutro |
+
+## Accessibility (objetivo)
+
+* Contraste legible en light/dark.
+* Labels en formularios de login y alta.
+* Meta WCAG 2.1 AA como objetivo de evolución (RNF previo); no bloqueante del snapshot.
+
+## Out of scope en este snapshot de UI
+
+* Widget público embebible completo (la API pública sí existe).
+* Generación de QR y Web Share API en el modal de enlace (documentados como mejora).
