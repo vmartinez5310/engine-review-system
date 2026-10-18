@@ -11,7 +11,7 @@ const isDarkMode = ref(false)
 const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 
-const activeTab = ref('inicio')
+const activeTab = ref('home') 
 
 const DashboardHomeView = defineAsyncComponent(() => import('../../views/core/DashboardHomeView.vue'))
 const ResenasView = defineAsyncComponent(() => import('../../views/core/ResenasView.vue'))
