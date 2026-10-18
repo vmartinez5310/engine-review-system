@@ -2,24 +2,54 @@
 import { ref, onMounted } from 'vue'
 import LoginView from './views/auth/LoginView.vue'
 import DashboardLayout from './components/layout/DashboardLayout.vue'
+import ReviewFormView from './views/public/ReviewFormView.vue'
 import { apiClient } from './services/api'
 import { authState, fetchUserInfo, logout as authLogout } from './composables/useAuth'
 
 const isAppLoading = ref(true)
 const loadingMessage = ref('Estableciendo conexión')
-const appConfig = ref({ nombre: '', color: '#334155', logoH: null, logoV: null })
+const appConfig = ref({
+  nombre: '',
+  color: '#334155',
+  logoH: null,
+  logoV: null,
+  urlFrontend: '',
+  recaptchaSiteKey: ''
+})
+
+const inviteToken = ref('')
+const isPublicReview = ref(false)
 
 onMounted(async () => {
+  const params = new URLSearchParams(window.location.search)
+  const t = params.get('t') || ''
+  if (t) {
+    inviteToken.value = t
+    isPublicReview.value = true
+  }
+
   try {
     const cfg = await apiClient.post('get_public_config')
     appConfig.value = {
       nombre: cfg.nombre || 'Dashboard',
       color: cfg.color || '#334155',
       logoH: cfg.logoH,
-      logoV: cfg.logoV
+      logoV: cfg.logoV,
+      urlFrontend: cfg.urlFrontend || '',
+      recaptchaSiteKey: cfg.recaptchaSiteKey || ''
     }
     document.documentElement.style.setProperty('--brand-color', appConfig.value.color)
-    await fetchUserInfo()
+
+    if (appConfig.value.recaptchaSiteKey && isPublicReview.value) {
+      const s = document.createElement('script')
+      s.src = `https://www.google.com/recaptcha/api.js?render=${appConfig.value.recaptchaSiteKey}`
+      s.async = true
+      document.head.appendChild(s)
+    }
+
+    if (!isPublicReview.value) {
+      await fetchUserInfo()
+    }
   } catch (e) {
     console.error(e)
     appConfig.value.nombre = 'Sistema de Gestión'
@@ -60,16 +90,23 @@ function handleLogout() {
   </Transition>
 
   <div v-show="!isAppLoading" class="min-h-screen w-full relative">
-    <LoginView
-      v-if="!authState.isAuthenticated"
+    <ReviewFormView
+      v-if="isPublicReview"
+      :invite-token="inviteToken"
       :config="appConfig"
-      @login-success="handleLoginSuccess"
     />
-    <DashboardLayout
-      v-else
-      :config="appConfig"
-      @logout="handleLogout"
-    />
+    <template v-else>
+      <LoginView
+        v-if="!authState.isAuthenticated"
+        :config="appConfig"
+        @login-success="handleLoginSuccess"
+      />
+      <DashboardLayout
+        v-else
+        :config="appConfig"
+        @logout="handleLogout"
+      />
+    </template>
   </div>
 </template>
 

@@ -11,6 +11,7 @@ function doPost(e) {
 
     const handlers = {
       get_public_reviews: () => api_obtenerResenasPublicas(),
+      validate_review_token: () => api_validarTokenInvitacion(payload.token || payload.t),
       submit_review: () => api_guardarResenaPublica(payload),
       request_otp: () => auth_solicitarOTP(payload.email),
       verify_otp: () => auth_verificarOTP(payload.email, payload.otp),
