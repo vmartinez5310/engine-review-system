@@ -159,10 +159,10 @@ onMounted(load)
 
     <!-- SKELETON LOADER (BENTO GRID) -->
     <div v-if="isLoading" class="flex-1 min-h-0">
-      <SkeletonBlock variant="bento" :rows="8" />
+      <SkeletonBlock variant="bento" />
     </div>
 
-    <!-- BENTO GRID -->
+    <!-- BENTO GRID: Altura natural en móvil, estirable al 100% en Desktop -->
     <div v-else class="flex flex-col lg:flex-1 lg:min-h-0 lg:grid lg:grid-rows-12 gap-4">
       
       <!-- NIVEL 1: HERO CARDS -->

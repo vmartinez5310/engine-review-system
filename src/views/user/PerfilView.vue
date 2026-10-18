@@ -107,7 +107,7 @@ onMounted(loadProfile)
 
     <!-- SKELETON DE CARGA -->
     <div v-if="isLoading" class="flex-1 min-h-0">
-      <SkeletonBlock variant="bento" :rows="8" />
+      <SkeletonBlock variant="form" :rows="4" />
     </div>
 
     <!-- CONTENIDO PRINCIPAL SIN SCROLL (12 Columnas) -->
