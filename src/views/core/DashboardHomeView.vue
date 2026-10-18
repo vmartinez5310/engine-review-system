@@ -46,7 +46,7 @@ onMounted(load)
       <p class="text-sm text-slate-500 dark:text-slate-400">Indicadores clave del sistema de reseñas</p>
     </div>
 
-    <SkeletonBlock v-if="isLoading" variant="cards" :rows="8" />
+    <SkeletonBlock v-if="isLoading" variant="bento" :rows="8" />
 
     <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <div
