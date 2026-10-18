@@ -102,23 +102,29 @@ function dash_generarEnlaceCliente(tokenDashboard, nombreCliente, servicio) {
 function dash_obtenerSeguimientos(token) {
   requerirPermiso('ver_seguimientos', token);
   const hoy = new Date();
-  return db_leerTodo(BD.TOKENS)
-    .filter(t => t.Estado === 'Activo')
-    .map(t => {
-      const f = String(t.Fecha_Envio || '').split('-');
-      const dias = f.length >= 3
-        ? Math.floor(Math.abs(hoy - new Date(+f[0], +f[1] - 1, +f[2])) / 86400000)
-        : 0;
-      return {
-        fila: t._fila,
-        id: t.ID_Enlace,
-        fecha: t.Fecha_Envio,
-        cliente: t.Nombre_Cliente,
-        servicio: t.Zona_Servicio,
-        url: t.URL_Generada,
-        dias
-      };
-    }).reverse();
+  return db_leerTodo(BD.TOKENS).map(t => {
+    const raw = String(t.Estado || '').trim();
+    const f = String(t.Fecha_Envio || '').split('-');
+    const dias = f.length >= 3
+      ? Math.floor(Math.abs(hoy - new Date(+f[0], +f[1] - 1, +f[2])) / 86400000)
+      : 0;
+    let estado = 'Activo';
+    if (raw === 'Usado') estado = 'Usado';
+    else if (raw === 'Cancelado') estado = 'Revocado';
+    else if (raw === 'Activo' && dias > 7) estado = 'Expirado';
+    else if (raw === 'Activo') estado = 'Activo';
+    else estado = raw || 'Activo';
+    return {
+      fila: t._fila,
+      id: t.ID_Enlace,
+      fecha: t.Fecha_Envio,
+      cliente: t.Nombre_Cliente,
+      servicio: t.Zona_Servicio,
+      url: t.URL_Generada,
+      dias,
+      estado
+    };
+  }).reverse();
 }
 
 function dash_revocarEnlace(token, filaToken) {
@@ -316,19 +322,34 @@ function dash_obtenerKpis(token) {
 
 function dash_obtenerTokens(token) {
   requerirPermiso('configurar_sistema', token);
+  const hoy = new Date();
   const mapa = {};
   db_leerTodo(BD.WHITELIST).forEach(u => {
     const id = extraerUserId(u);
     if (id) mapa[id] = u.Nombre || '';
   });
-  return db_leerTodo(BD.TOKENS).map(t => ({
-    fila: t._fila,
-    id: t.ID_Enlace,
-    fecha: t.Fecha_Envio,
-    cliente: t.Nombre_Cliente,
-    servicio: t.Zona_Servicio,
-    url: t.URL_Generada,
-    estado: t.Estado,
-    asesor: mapa[extraerUserId(t)] || t.UserId || '—'
-  })).reverse();
+  return db_leerTodo(BD.TOKENS).map(t => {
+    const raw = String(t.Estado || '').trim();
+    const f = String(t.Fecha_Envio || '').split('-');
+    const dias = f.length >= 3
+      ? Math.floor(Math.abs(hoy - new Date(+f[0], +f[1] - 1, +f[2])) / 86400000)
+      : 0;
+    let estado = 'Activo';
+    if (raw === 'Usado') estado = 'Usado';
+    else if (raw === 'Cancelado') estado = 'Revocado';
+    else if (raw === 'Activo' && dias > 7) estado = 'Expirado';
+    else if (raw === 'Activo') estado = 'Activo';
+    else estado = raw || 'Activo';
+    return {
+      fila: t._fila,
+      id: t.ID_Enlace,
+      fecha: t.Fecha_Envio,
+      cliente: t.Nombre_Cliente,
+      servicio: t.Zona_Servicio,
+      url: t.URL_Generada,
+      dias,
+      estado,
+      asesor: mapa[extraerUserId(t)] || t.UserId || '—'
+    };
+  }).reverse();
 }
