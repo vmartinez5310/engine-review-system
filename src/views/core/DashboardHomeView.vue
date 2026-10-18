@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { apiClient } from '../../services/api'
 import SkeletonBlock from '../../components/ui/SkeletonBlock.vue'
 
+defineProps({ config: { type: Object, default: () => ({}) } })
+
 const isLoading = ref(true)
 const lastUpdated = ref('')
 
@@ -128,16 +130,13 @@ onMounted(load)
         <div class="flex items-center gap-2">
           <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-            Inmobiliarte • Telemetría en Tiempo Real
+            {{ config?.nombre || 'Sistema de Reseñas' }}
           </span>
         </div>
         <div class="flex items-baseline gap-3 mt-0.5">
           <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Resumen Ejecutivo
-          </h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 hidden md:inline-block">
             Indicadores clave del sistema de reseñas
-          </p>
+          </h2>
         </div>
       </div>
 

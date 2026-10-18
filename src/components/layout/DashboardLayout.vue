@@ -251,7 +251,7 @@ onMounted(() => {
 
       <div class="flex-1 overflow-hidden p-3 sm:p-5">
         <!-- Transition wrapper retirado para evitar bugs de nodos múltiples -->
-        <component :is="currentViewComponent" />
+        <component :is="currentViewComponent" :config="config" />
       </div>
     </main>
   </div>
