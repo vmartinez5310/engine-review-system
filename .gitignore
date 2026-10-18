@@ -14,9 +14,12 @@ dist-ssr
 
 # Archivos de entorno locales (credenciales)
 *.local
+.env
 .env.local
 .env.*.local
-
+.env.development.local
+.env.test.local
+.env.production.local
 # Directorios y archivos del Editor (IDE)
 .vscode/*
 !.vscode/extensions.json

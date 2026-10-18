@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { apiClient } from '../../services/api'
 
 const isLoading = ref(true)
@@ -119,7 +119,6 @@ onMounted(load)
 </script>
 
 <template>
-  <!-- CONTENEDOR RAÍZ: Scroll fluido en móvil/tablet, pantalla fija sin scroll en Desktop (lg:) -->
   <div class="h-full w-full flex flex-col overflow-y-auto lg:overflow-hidden pb-6 lg:pb-2 select-none">
     
     <!-- HEADER EJECUTIVO -->

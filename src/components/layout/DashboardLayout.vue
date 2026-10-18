@@ -11,7 +11,7 @@ const isDarkMode = ref(false)
 const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 
-const activeTab = ref('resenas') 
+const activeTab = ref('home') 
 
 // --- CARGA PEREZOSA (LAZY LOADING) ---
 const ResenasView = defineAsyncComponent(() => import('../../views/core/ResenasView.vue'))
