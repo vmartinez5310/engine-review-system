@@ -11,43 +11,35 @@ const isDarkMode = ref(false)
 const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 
+// 1. Estado inicial fijado en 'home' (Inicio)
 const activeTab = ref('home') 
 
+// 2. Carga perezosa de vistas SIN duplicados
 const DashboardHomeView = defineAsyncComponent(() => import('../../views/core/DashboardHomeView.vue'))
 const ResenasView = defineAsyncComponent(() => import('../../views/core/ResenasView.vue'))
 const UsuariosView = defineAsyncComponent(() => import('../../views/admin/UsuariosView.vue'))
 const SistemaView = defineAsyncComponent(() => import('../../views/admin/SistemaView.vue'))
 const PerfilView = defineAsyncComponent(() => import('../../views/user/PerfilView.vue'))
-const DashboardHomeView = defineAsyncComponent(() => import('../../views/core/DashboardHomeView.vue'))
 
+// 3. Diccionario unificado usando la clave 'home'
 const currentViewComponent = computed(() => {
   const views = {
-    inicio: DashboardHomeView,
+    home: DashboardHomeView,
     resenas: ResenasView,
     usuarios: UsuariosView,
     sistema: SistemaView,
     perfil: PerfilView
-    'resenas': ResenasView,
-    'usuarios': UsuariosView,
-    'sistema': SistemaView,
-    'perfil': PerfilView,
-    'home': DashboardHomeView
   }
   return views[activeTab.value] || DashboardHomeView
 })
 
 const pageTitle = computed(() => {
   const titles = {
-    inicio: 'Inicio',
+    home: 'Inicio',
     resenas: 'Centro de Reseñas',
     usuarios: 'Gestión de Usuarios',
     sistema: 'Configuración',
     perfil: 'Mi Perfil'
-    'resenas': 'Centro de Reseñas',
-    'usuarios': 'Gestión de Usuarios',
-    'sistema': 'Configuración',
-    'perfil': 'Mi Perfil',
-    'home': 'Inicio'
   }
   return titles[activeTab.value] || 'Dashboard'
 })
@@ -135,17 +127,7 @@ onMounted(() => {
       </div>
 
       <nav class="flex-1 px-3 py-2 flex flex-col gap-1.5 overflow-y-auto custom-scrollbar">
-        <button @click="navigateTo('inicio')"
-          :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'inicio' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
-          <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
-            <i class="fas fa-chart-pie text-lg w-6 text-center"></i>
-            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Inicio</span></Transition>
-          </div>
-        </button>
-
-        <button @click="navigateTo('resenas')"
-
-        <!-- Ítem 1: Inicio -->
+        <!-- Ítem 1: Inicio (Único botón, apuntando a 'home') -->
         <button @click="navigateTo('home')" 
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'home' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
@@ -154,7 +136,7 @@ onMounted(() => {
           </div>
         </button>
         
-        <!-- Ítem 1: Reseñas -->
+        <!-- Ítem 2: Reseñas -->
         <button @click="navigateTo('resenas')" 
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'resenas' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
@@ -163,6 +145,7 @@ onMounted(() => {
           </div>
         </button>
 
+        <!-- Ítem 3: Usuarios -->
         <button v-if="hasPermission('gestionar_usuarios')" @click="navigateTo('usuarios')"
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'usuarios' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
@@ -171,6 +154,7 @@ onMounted(() => {
           </div>
         </button>
 
+        <!-- Ítem 4: Configuración -->
         <button v-if="hasPermission('configurar_sistema')" @click="navigateTo('sistema')"
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'sistema' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
@@ -266,6 +250,7 @@ onMounted(() => {
       </header>
 
       <div class="flex-1 overflow-hidden p-3 sm:p-5">
+        <!-- Transition wrapper retirado para evitar bugs de nodos múltiples -->
         <component :is="currentViewComponent" />
       </div>
     </main>
