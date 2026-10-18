@@ -72,7 +72,7 @@ async function saveConfig() {
 </script>
 
 <template>
-  <div class="h-full w-full flex flex-col overflow-y-auto lg:overflow-hidden pb-6 lg:pb-2 select-none">
+  <div class="h-full w-full flex flex-col overflow-y-auto pb-6 lg:pb-2 select-none">
     
     <!-- HEADER EJECUTIVO UNIFICADO -->
     <div class="shrink-0 flex flex-wrap items-center justify-between gap-4 pb-3.5 mb-4 border-b border-slate-200/80 dark:border-slate-800/80">
@@ -121,7 +121,7 @@ async function saveConfig() {
     <div v-else class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
       
       <!-- COLUMNA IZQUIERDA (7 cols): IDENTIDAD DE MARCA Y ACTIVOS -->
-      <div class="lg:col-span-7 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/95 p-5 flex flex-col justify-between gap-3.5 shadow-sm min-h-0">
+      <div class="lg:col-span-7 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-5 flex flex-col justify-between gap-3.5 shadow-sm min-h-0">
         
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3 shrink-0">
           <div class="flex items-center gap-2.5">
@@ -154,27 +154,27 @@ async function saveConfig() {
           </div>
 
           <div class="sm:col-span-5">
-            <label class="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">
+            <label class="block text-sm font-semibold mb-1 text-slate-300">
               Color primario
             </label>
-            <div class="flex items-center gap-2">
+            <div class="flex items-stretch gap-0 rounded-xl overflow-hidden border border-white/20 bg-slate-950/40">
               <input
                 v-model="form.Color_Primario"
                 type="color"
-                class="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent shrink-0"
+                class="w-14 h-12 cursor-pointer bg-transparent border-0 shrink-0"
               />
               <input
                 v-model="form.Color_Primario"
                 type="text"
                 placeholder="#4CC3E9"
-                class="w-full p-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-sm font-mono uppercase text-slate-800 dark:text-white focus:ring-2 focus:ring-brand"
+                class="flex-1 px-3 bg-transparent outline-none text-sm font-mono uppercase text-slate-100 placeholder:text-slate-500 focus:ring-0"
               />
             </div>
           </div>
         </div>
 
         <!-- Logo Horizontal con Preview integrado -->
-        <div class="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div class="p-3 rounded-xl bg-slate-950/40 border border-white/10 flex flex-col sm:flex-row sm:items-center gap-3">
           <div class="flex-1 min-w-0">
             <BaseInput
               v-model="form.Logo_Horizontal"
@@ -183,7 +183,7 @@ async function saveConfig() {
               icon="fas fa-image"
             />
           </div>
-          <div class="w-full sm:w-36 h-14 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center p-2 shrink-0 overflow-hidden">
+          <div class="w-full sm:w-36 h-14 rounded-xl bg-white/5 backdrop-blur-sm border border-white/15 flex items-center justify-center p-2 shrink-0 overflow-hidden">
             <img
               v-if="previewH"
               :src="previewH"
@@ -191,12 +191,12 @@ async function saveConfig() {
               class="max-h-full max-w-full object-contain"
               @error="$event.target.style.display = 'none'"
             />
-            <span v-else class="text-[10px] text-slate-400">Sin vista previa</span>
+            <span v-else class="text-[11px] text-slate-400">Sin vista previa</span>
           </div>
         </div>
 
         <!-- Logo Vertical con Preview integrado -->
-        <div class="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div class="p-3 rounded-xl bg-slate-950/40 border border-white/10 flex flex-col sm:flex-row sm:items-center gap-3">
           <div class="flex-1 min-w-0">
             <BaseInput
               v-model="form.Logo_Vertical"
@@ -205,7 +205,7 @@ async function saveConfig() {
               icon="fas fa-icons"
             />
           </div>
-          <div class="w-14 h-14 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center p-2 shrink-0 overflow-hidden self-center">
+          <div class="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-sm border border-white/15 flex items-center justify-center p-2 shrink-0 overflow-hidden self-center">
             <img
               v-if="previewV"
               :src="previewV"
@@ -213,7 +213,7 @@ async function saveConfig() {
               class="max-h-full max-w-full object-contain"
               @error="$event.target.style.display = 'none'"
             />
-            <i v-else class="fas fa-cube text-slate-500 text-xs"></i>
+            <i v-else class="fas fa-cube text-slate-400 text-sm"></i>
           </div>
         </div>
 
@@ -223,7 +223,7 @@ async function saveConfig() {
       <div class="lg:col-span-5 flex flex-col gap-4 min-h-0">
         
         <!-- Enrutamiento -->
-        <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/95 p-5 flex flex-col justify-between gap-3.5 shadow-sm">
+        <div class="rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-5 flex flex-col justify-between gap-3.5 shadow-sm">
           <div class="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800/80 pb-3">
             <div class="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
               <i class="fas fa-globe text-xs"></i>

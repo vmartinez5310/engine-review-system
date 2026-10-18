@@ -88,7 +88,7 @@ onMounted(loadProfile)
 </script>
 
 <template>
-  <div class="h-full w-full flex flex-col overflow-y-auto lg:overflow-hidden pb-6 lg:pb-2 select-none">
+  <div class="h-full w-full flex flex-col overflow-y-auto pb-6 lg:pb-2 select-none">
     
     <!-- HEADER EJECUTIVO UNIFICADO -->
     <div class="shrink-0 flex flex-wrap items-center justify-between gap-4 pb-3.5 mb-4 border-b border-slate-200/80 dark:border-slate-800/80">
@@ -126,18 +126,18 @@ onMounted(loadProfile)
     <div v-else class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
       
       <!-- COLUMNA IZQUIERDA (4 cols): TARJETA DE IDENTIDAD LIMPIA -->
-      <div class="lg:col-span-4 relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-gradient-to-br from-white via-white to-sky-50/30 dark:from-slate-900 dark:via-slate-900/95 dark:to-sky-950/20 p-6 flex flex-col justify-between shadow-sm">
-        <div class="absolute -right-12 -top-12 w-44 h-44 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="lg:col-span-4 relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 flex flex-col shadow-sm">
+        <div class="absolute -right-16 -top-16 w-64 h-64 bg-sky-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">
             Identidad Activa
           </span>
           <StatusBadge :status="profile.estado || 'Activo'" />
         </div>
 
-        <div class="my-auto flex flex-col items-center text-center py-4">
-          <div class="w-24 h-24 rounded-2xl overflow-hidden bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shadow-md">
+        <div class="flex flex-col items-center text-center">
+          <div class="w-32 h-32 rounded-2xl overflow-hidden bg-sky-500/15 border border-sky-500/30 flex items-center justify-center ring-4 ring-sky-500/20 shadow-lg shadow-sky-500/10">
             <img
               v-if="avatarPreview"
               :src="avatarPreview"
@@ -145,33 +145,33 @@ onMounted(loadProfile)
               class="w-full h-full object-cover"
               @error="$event.target.style.display = 'none'"
             />
-            <span v-else class="text-3xl font-extrabold text-sky-400">
+            <span v-else class="text-4xl font-extrabold text-sky-400">
               {{ initials(profile.nombre) }}
             </span>
           </div>
 
-          <h3 class="mt-4 text-xl font-bold text-slate-900 dark:text-white truncate max-w-full">
+          <h3 class="mt-5 text-2xl font-bold text-slate-900 dark:text-white truncate max-w-full">
             {{ profile.nombre || 'Operador' }}
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate max-w-full">
+          <p class="text-sm text-slate-400 mt-1 truncate max-w-full">
             {{ profile.email }}
           </p>
 
-          <span class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-sky-500/10 text-sky-400 border border-sky-500/20">
+          <span class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-300 border border-sky-500/30">
             <i class="fas fa-shield-alt text-[10px]"></i>
             {{ profile.rol }}
           </span>
         </div>
 
-        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-          <span>ID de Operador</span>
-          <span class="font-mono text-slate-600 dark:text-slate-300">{{ profile.idUser || 'SESIÓN ACTIVA' }}</span>
+        <div class="mt-auto pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+          <span class="text-slate-400">ID de Operador</span>
+          <span class="font-mono text-slate-200 bg-slate-950/40 px-2 py-0.5 rounded">{{ profile.idUser || 'SESIÓN ACTIVA' }}</span>
         </div>
       </div>
 
       <!-- COLUMNA DERECHA (8 cols): PREFERENCIAS EDITABLES SIN RUIDO -->
       <form
-        class="lg:col-span-8 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/95 p-6 flex flex-col justify-between gap-4 shadow-sm"
+        class="lg:col-span-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 flex flex-col justify-between gap-4 shadow-sm"
         @submit.prevent="saveProfile"
       >
         <div class="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800/80 pb-3">
@@ -196,7 +196,7 @@ onMounted(loadProfile)
             icon="fas fa-user"
           />
 
-          <div class="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="p-4 rounded-xl bg-slate-950/40 border border-white/10 flex flex-col sm:flex-row sm:items-center gap-4">
             <div class="flex-1 min-w-0">
               <BaseInput
                 v-model="profile.logo"
