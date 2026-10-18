@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { apiClient } from '../../services/api'
+import SkeletonBlock from '../../components/ui/SkeletonBlock.vue'
 
 const isLoading = ref(true)
 const lastUpdated = ref('')
@@ -151,40 +152,26 @@ onMounted(load)
           class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition-all active:scale-95 disabled:opacity-50"
         >
           <i :class="['fas fa-sync-alt text-slate-400 text-xs', { 'animate-spin text-amber-400': isLoading }]"></i>
-          <span>Actualizar</span>
+          <span class="hidden sm:inline">Actualizar</span>
         </button>
       </div>
     </div>
 
-    <!-- SKELETON LOADER -->
+    <!-- SKELETON LOADER (BENTO GRID) -->
     <div v-if="isLoading" class="flex-1 min-h-0">
-      <SkeletonBlock variant="cards" :rows="8" />
+      <SkeletonBlock variant="bento" :rows="8" />
     </div>
 
-    <SkeletonBlock v-if="isLoading" variant="bento" :rows="8" />
-
-    <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <div
-        v-for="c in cards"
-        :key="c.key"
-        class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm"
-      >
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <p class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ c.label }}</p>
-            <p class="mt-1.5 text-2xl font-bold text-slate-800 dark:text-white tabular-nums">
-              {{ c.key === 'promedio' ? (kpis.promedio || 0).toFixed(1) : (kpis[c.key] ?? 0) }}
-    <!-- BENTO GRID: Altura natural en móvil, estirable al 100% en Desktop -->
+    <!-- BENTO GRID -->
     <div v-else class="flex flex-col lg:flex-1 lg:min-h-0 lg:grid lg:grid-rows-12 gap-4">
       
-      <!-- NIVEL 1: HERO CARDS (5 de 12 filas en Desktop) -->
+      <!-- NIVEL 1: HERO CARDS -->
       <div class="lg:row-span-5 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:min-h-0">
         
         <!-- Hero 1: Calificación Media Global -->
         <div class="lg:col-span-7 relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-gradient-to-br from-white via-white to-amber-50/40 dark:from-slate-900 dark:via-slate-900/95 dark:to-amber-950/25 p-5 xl:p-6 shadow-sm flex flex-col justify-between gap-5 lg:gap-2">
           <div class="absolute -right-12 -top-12 w-52 h-52 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-          <!-- Parte superior -->
+          
           <div class="relative flex flex-wrap items-start justify-between gap-4">
             <div>
               <div class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
@@ -193,7 +180,6 @@ onMounted(load)
                 </div>
                 <span>Calificación Media Global</span>
               </div>
-
               <div class="mt-3 flex items-baseline gap-3">
                 <span class="text-5xl sm:text-6xl xl:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums leading-none">
                   {{ (kpis.promedio || 0).toFixed(1) }}
@@ -202,7 +188,6 @@ onMounted(load)
               </div>
             </div>
 
-            <!-- Estrellas Dinámicas Grandes -->
             <div class="flex flex-col items-start sm:items-end">
               <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/90 px-3.5 py-2 rounded-xl border border-slate-200/70 dark:border-slate-700/70 shadow-inner">
                 <template v-for="star in 5" :key="star">
@@ -218,7 +203,6 @@ onMounted(load)
             </div>
           </div>
 
-          <!-- Parte inferior con barra de proporción -->
           <div class="relative space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/80">
             <div class="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
               <div class="flex items-center gap-5">
@@ -233,22 +217,13 @@ onMounted(load)
                   <strong class="text-slate-900 dark:text-white font-bold tabular-nums">{{ kpis.pendientes }}</strong>
                 </div>
               </div>
-
               <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1 rounded-lg tabular-nums">
                 {{ approvalRate }}% Aprobación
               </span>
             </div>
-
-            <!-- Barra segmentada Publicadas vs Pendientes -->
             <div class="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex p-0.5 gap-0.5">
-              <div
-                class="h-full bg-emerald-500 rounded-l-full transition-all duration-700"
-                :style="{ width: `${approvalRate}%` }"
-              ></div>
-              <div
-                class="h-full bg-amber-400 rounded-r-full transition-all duration-700"
-                :style="{ width: `${pendingRate}%` }"
-              ></div>
+              <div class="h-full bg-emerald-500 rounded-l-full transition-all duration-700" :style="{ width: `${approvalRate}%` }"></div>
+              <div class="h-full bg-amber-400 rounded-r-full transition-all duration-700" :style="{ width: `${pendingRate}%` }"></div>
             </div>
           </div>
         </div>
@@ -256,7 +231,6 @@ onMounted(load)
         <!-- Hero 2: Conversión de Enlaces -->
         <div class="lg:col-span-5 relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/90 bg-white dark:bg-slate-900 p-5 xl:p-6 shadow-sm flex flex-col justify-between gap-5 lg:gap-2">
           <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
           <div class="relative flex items-start justify-between gap-4">
             <div>
               <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
@@ -269,14 +243,10 @@ onMounted(load)
                 <span class="text-sm sm:text-base font-medium text-slate-400 dark:text-slate-500">efectividad</span>
               </div>
             </div>
-
-            <!-- Icono Grande -->
             <div class="w-12 h-12 xl:w-14 xl:h-14 rounded-2xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center shrink-0 shadow-sm">
               <i class="fas fa-chart-line text-sky-400 text-xl xl:text-2xl"></i>
             </div>
           </div>
-
-          <!-- Barra de Progreso Financiera -->
           <div class="relative space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/80">
             <div class="flex justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400 tabular-nums">
               <span>Usados: <strong class="text-slate-900 dark:text-white font-bold">{{ kpis.tokensUsados }}</strong></span>
@@ -284,33 +254,23 @@ onMounted(load)
               <span>Total: <strong class="text-slate-900 dark:text-white font-bold">{{ kpis.tokensTotal }}</strong></span>
             </div>
             <div class="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
-              <div
-                class="h-full bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full transition-all duration-700"
-                :style="{ width: `${Math.min(conversionRate, 100)}%` }"
-              ></div>
+              <div class="h-full bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full transition-all duration-700" :style="{ width: `${Math.min(conversionRate, 100)}%` }"></div>
             </div>
           </div>
         </div>
 
       </div>
 
-      <!-- NIVEL 2: MATRIZ OPERATIVA (2 columnas en móvil/tablet, 3x2 en Desktop) -->
+      <!-- NIVEL 2: MATRIZ OPERATIVA -->
       <div class="lg:row-span-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 gap-4 lg:min-h-0">
         <div
           v-for="c in secondaryCards"
           :key="c.key"
-          :class="[
-            'group relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/95 p-5 xl:p-6 flex flex-col justify-between gap-4 lg:gap-2 transition-all duration-200 hover:shadow-lg hover:shadow-slate-950/30',
-            c.borderHover
-          ]"
+          :class="['group relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/95 p-5 xl:p-6 flex flex-col justify-between gap-4 lg:gap-2 transition-all duration-200 hover:shadow-lg hover:shadow-slate-950/30', c.borderHover]"
         >
-          <!-- Resplandor superior al pasar el cursor -->
           <div :class="['absolute inset-x-0 top-0 h-16 bg-gradient-to-b opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none', c.accent]"></div>
-          
-          <!-- Marca de agua decorativa de fondo para evitar vacío visual -->
           <i :class="[c.icon, 'absolute -right-3 -bottom-3 text-7xl xl:text-8xl opacity-[0.03] dark:opacity-[0.04] pointer-events-none transition-transform duration-500 group-hover:scale-110']"></i>
 
-          <!-- Cabecera: Etiqueta + Icono Grande -->
           <div class="relative flex items-center justify-between gap-3">
             <span class="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">
               {{ c.label }}
@@ -320,20 +280,15 @@ onMounted(load)
             </div>
           </div>
 
-          <!-- Cifra Principal Grande + Badge -->
           <div class="relative flex items-baseline justify-between gap-3 my-auto">
             <p class="text-4xl sm:text-4xl xl:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums leading-none">
               {{ c.value }}
             </p>
-            <span
-              v-if="c.badge"
-              :class="['text-xs font-bold px-2.5 py-1 rounded-lg border tabular-nums', c.badgeColor]"
-            >
+            <span v-if="c.badge" :class="['text-xs font-bold px-2.5 py-1 rounded-lg border tabular-nums', c.badgeColor]">
               {{ c.badge }}
             </span>
           </div>
 
-          <!-- Pie de tarjeta -->
           <div class="relative pt-3 border-t border-slate-100 dark:border-slate-800/70 flex items-center justify-between">
             <span class="text-xs font-medium text-slate-400 dark:text-slate-500 truncate">
               {{ c.subtext }}
