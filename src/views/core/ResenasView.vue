@@ -5,13 +5,10 @@ import { hasPermission } from '../../composables/useAuth'
 import GenerarResenaModal from './GenerarResenaModal.vue'
 
 // --- ESTADOS PRINCIPALES ---
-const activeSubTab = ref('recibidas') // Solo 'recibidas' y 'enlaces'
+const activeSubTab = ref('recibidas') // 'recibidas' | 'por_evaluar'
 const isLoading = ref(true)
 const reviews = ref([])
 const tokens = ref([])
-
-// Variables de entorno
-const URL_Frontend_App = window.URL_Frontend_App || window.location.origin
 
 // --- ESTADOS: MODALES ---
 const showManageModal = ref(false)
@@ -20,8 +17,7 @@ const replyText = ref('')
 const isAILoading = ref(false)
 
 const showGenerateModal = ref(false)
-
-const modalGenerarRef = ref(null)
+const selectedToken = ref(null)
 
 // --- CONFIGURACIÓN DE COLUMNAS ---
 const reviewColumns = computed(() => {
@@ -34,26 +30,33 @@ const reviewColumns = computed(() => {
     { key: 'comentario', label: 'Reseña' },
     { key: 'estado', label: 'Estado', required: true }
   ]
-  if (hasPermission('editar_resena')) baseCols.push({ key: 'respuesta', label: 'Respuesta', hidden: true })
+  if (hasPermission('editar_resena')) {
+    baseCols.push({ key: 'respuesta', label: 'Respuesta', hidden: true })
+  }
   return baseCols
 })
 
-// Máximo 4 visibles por defecto (hidden: true oculta las secundarias)
 const tokenColumns = [
-  { key: 'fecha', label: 'Generado', hidden: true },
+  { key: 'id', label: 'ID', hidden: true },
+  { key: 'fecha', label: 'Generado' },
   { key: 'cliente', label: 'Cliente', required: true },
-  { key: 'servicio', label: 'Servicio', hidden: true },
-  { key: 'dias', label: 'Días Transcurridos' },
+  { key: 'servicio', label: 'Servicio' },
+  { key: 'dias', label: 'Transcurrido' },
   { key: 'asesor', label: 'Asesor', hidden: true },
   { key: 'estado', label: 'Estado', required: true }
 ]
+
+const tokenFilterOptions = ['Activo', 'Usado', 'Expirado', 'Revocado']
 
 // --- CARGA DE DATOS ---
 async function fetchData() {
   isLoading.value = true
   try {
-    if (activeSubTab.value === 'recibidas') reviews.value = await apiClient.post('get_dashboard_reviews')
-    if (activeSubTab.value === 'enlaces') tokens.value = await apiClient.post('get_tokens')
+    if (activeSubTab.value === 'recibidas') {
+      reviews.value = await apiClient.post('get_dashboard_reviews')
+    } else if (activeSubTab.value === 'por_evaluar') {
+      tokens.value = await apiClient.post('get_tokens')
+    }
   } catch (e) {
     window.Swal?.fire('Error', e.message, 'error')
   } finally {
@@ -64,6 +67,21 @@ async function fetchData() {
 onMounted(fetchData)
 watch(activeSubTab, fetchData)
 
+// --- APERTURA UNIFICADA DE MODALES ---
+function openNewLinkModal() {
+  selectedToken.value = null
+  showGenerateModal.value = true
+}
+
+function handleRowClick(row) {
+  if (activeSubTab.value === 'recibidas') {
+    if (hasPermission('editar_resena')) openManageModal(row)
+  } else if (activeSubTab.value === 'por_evaluar') {
+    selectedToken.value = row
+    showGenerateModal.value = true
+  }
+}
+
 // --- GESTIÓN DE RESEÑAS RECIBIDAS ---
 function openManageModal(review) {
   selectedReview.value = review
@@ -72,20 +90,47 @@ function openManageModal(review) {
 }
 
 async function saveApproval() {
-  const result = await window.Swal?.fire({ title: '¿Publicar respuesta?', text: 'Será visible en internet', icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981' })
+  const result = await window.Swal?.fire({
+    title: '¿Publicar respuesta?',
+    text: 'Será visible públicamente',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#10b981'
+  })
   if (!result?.isConfirmed) return
+
   try {
-    await apiClient.post('update_review', { fila: selectedReview.value.fila, estado: 'Aprobado', respuesta: replyText.value })
+    await apiClient.post('update_review', {
+      fila: selectedReview.value.fila,
+      estado: 'Aprobado',
+      respuesta: replyText.value
+    })
     selectedReview.value.estado = 'Aprobado'
     selectedReview.value.respuesta = replyText.value
     showManageModal.value = false
-    window.Swal?.fire({ icon: 'success', title: 'Publicado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false })
-  } catch (e) { window.Swal?.fire('Error', e.message, 'error') }
+    window.Swal?.fire({
+      icon: 'success',
+      title: 'Publicado',
+      toast: true,
+      position: 'top-end',
+      timer: 2000,
+      showConfirmButton: false
+    })
+  } catch (e) {
+    window.Swal?.fire('Error', e.message, 'error')
+  }
 }
 
 async function handleArchive(item) {
-  const result = await window.Swal?.fire({ title: '¿Archivar esta reseña?', text: 'Se ocultará públicamente', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444' })
+  const result = await window.Swal?.fire({
+    title: '¿Archivar esta reseña?',
+    text: 'Se ocultará públicamente',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444'
+  })
   if (!result?.isConfirmed) return
+
   try {
     await apiClient.post('update_review', { fila: item.fila, estado: 'Archivado' })
     item.estado = 'Archivado'
@@ -99,74 +144,37 @@ async function callGeminiAI() {
   if (!replyText.value) replyText.value = 'Agradece cordialmente la reseña.'
   isAILoading.value = true
   try {
-    const res = await apiClient.post('call_ai', { prompt: `Actúa como RP. Cliente dijo: "${selectedReview.value.comentario}". Borrador: "${replyText.value}". Mejora y devuelve SOLO respuesta.` })
+    const res = await apiClient.post('call_ai', {
+      prompt: `Actúa como RP. Cliente dijo: "${selectedReview.value.comentario}". Borrador: "${replyText.value}". Mejora y devuelve SOLO respuesta.`
+    })
     replyText.value = res.texto
-  } catch (e) { window.Swal?.fire('Error de IA', e.message, 'error') } 
-  finally { isAILoading.value = false }
+  } catch (e) {
+    window.Swal?.fire('Error de IA', e.message, 'error')
+  } finally {
+    isAILoading.value = false
+  }
 }
 
+// --- GESTIÓN DE TOKENS ---
 function onGenerateSuccess() {
-  if (activeSubTab.value === 'por_evaluar') fetchTracks()
+  if (activeSubTab.value === 'por_evaluar') fetchData()
 }
 
-async function revokeLink() {
-  if (!hasPermission('editar_resena')) return
-  const result = await window.Swal?.fire({ title: '¿Revocar enlace?', text: `Se inhabilitará el token de ${selectedToken.value.cliente}`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444' })
-  if (!result?.isConfirmed) return
-  try {
-    await apiClient.post('revoke_link', { fila: selectedToken.value.fila })
-    
-    // Actualizar datos locales
-    const tokenIndex = tokens.value.findIndex(t => t.fila === selectedToken.value.fila)
-    if (tokenIndex !== -1) tokens.value[tokenIndex].estado = 'Revocado'
-    selectedToken.value.estado = 'Revocado'
-
-    showTokenManageModal.value = false
-    window.Swal?.fire({ icon: 'success', title: 'Enlace revocado', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false })
-  } catch (e) { window.Swal?.fire('Error', e.message, 'error') }
-}
-
-// Funciones de Compartir (API Nativa)
-async function shareTokenSystem() {
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: 'Evalúa nuestro servicio',
-        text: `Hola ${selectedToken.value.cliente}, por favor ayúdanos evaluando nuestro servicio:`,
-        url: selectedToken.value.link
-      })
-    } catch (err) { console.log('Compartir cancelado', err) }
-  } else {
-    copyToClipboard(selectedToken.value.link)
-  }
-}
-
-function sendTokenWhatsApp() {
-  const text = encodeURIComponent(`Hola ${selectedToken.value.cliente}. Gracias por confiar en nosotros para: ${selectedToken.value.servicio || 'el servicio'}. ¿Podrías apoyarnos con una breve calificación aquí? ${selectedToken.value.link}`)
-  window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
-}
-
-function handleRowClick(row) {
-  if (activeSubTab.value === 'recibidas') {
-    if (hasPermission('editar_resena')) openManageModal(row)
-  } else if (activeSubTab.value === 'por_evaluar' && row.estado === 'Activo') {
-    sendWhatsAppReminder(row)
-  }
-}
-
-async function revokeTrack(item) {
-  if (!hasPermission('editar_resena')) return
+async function revokeToken(item) {
+  if (!hasPermission('editar_resena') || !item) return
   const result = await window.Swal?.fire({
     title: '¿Revocar enlace?',
-    text: item.cliente,
+    text: `Se inhabilitará el enlace de ${item.cliente}`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#ef4444'
   })
   if (!result?.isConfirmed) return
+
   try {
     await apiClient.post('revoke_link', { fila: item.fila })
     item.estado = 'Revocado'
+    showGenerateModal.value = false
     window.Swal?.fire({
       icon: 'success',
       title: 'Enlace revocado',
@@ -183,6 +191,7 @@ async function revokeTrack(item) {
 
 <template>
   <div class="h-full flex flex-col gap-3">
+    <!-- SELECTOR DE SUB-PESTAÑAS -->
     <div class="flex bg-slate-200/50 dark:bg-slate-800/50 p-1.5 rounded-xl w-full sm:w-fit shrink-0">
       <button
         type="button"
@@ -214,10 +223,9 @@ async function revokeTrack(item) {
     <!-- ÁREA DE TABLAS -->
     <div class="flex-1 overflow-hidden flex flex-col relative">
       <Transition name="fade" mode="out-in">
-        
-        <!-- PESTAÑA: RECIBIDAS -->
-        <div v-if="activeSubTab === 'recibidas'" class="absolute inset-0 flex flex-col">
-          <SkeletonBlock v-if="isLoading" variant="table" :rows="8" />
+        <!-- PESTAÑA 1: RESEÑAS RECIBIDAS -->
+        <div v-if="activeSubTab === 'recibidas'" key="recibidas" class="absolute inset-0 flex flex-col">
+          <SkeletonBlock v-if="isLoading" variant="table" :rows="6" />
           <DataTable
             v-else
             :mobile-preview-count="3"
@@ -233,61 +241,51 @@ async function revokeTrack(item) {
               <BaseButton
                 v-if="hasPermission('generar_enlace')"
                 icon="fas fa-plus"
-                @click="showGenerateModal = true"
+                @click="openNewLinkModal"
               >
                 <span class="hidden sm:inline ml-1">Pedir Reseña</span>
               </BaseButton>
             </template>
-            <template #cell-calificacion="{ item }"><BaseStarRating :score="Number(item.calificacion)" /></template>
-            <template #cell-comentario="{ item }"><div class="max-w-[120px] 2xl:max-w-[200px] truncate text-slate-700 dark:text-slate-300">{{ item.comentario }}</div></template>
-            <template #cell-legalOk="{ item }"><div class="text-center"><i v-if="item.legalOk" class="fas fa-check-circle text-emerald-500"></i><i v-else class="fas fa-minus text-slate-300"></i></div></template>
-            <template #cell-respuesta="{ item }"><div v-if="item.respuesta" class="max-w-[120px] 2xl:max-w-[200px] truncate text-slate-700 dark:text-slate-300">{{ item.respuesta }}</div><span v-else class="text-slate-400 italic text-[11px]">Sin respuesta</span></template>
-            <template #cell-estado="{ item }"><StatusBadge :status="item.estado" /></template>
-          </DataTable>
-        </div>
-
-        <!-- PESTAÑA: ENLACES GENERADOS -->
-        <div v-else-if="activeSubTab === 'enlaces'" class="absolute inset-0 flex flex-col">
-          <SkeletonBlock v-if="isLoading" variant="tokens" :rows="8" />
-          <DataTable v-else @row-click="handleRowClick" :mobile-preview-count="2" :columns="tokenColumns" :data="tokens" search-placeholder="Buscar cliente..." :filter-options="['Activo', 'Usado', 'Expirado', 'Revocado']" filter-column-key="estado">
-            <template #header-actions>
-              <BaseButton v-if="hasPermission('generar_enlace')" icon="fas fa-plus" @click="modalGenerarRef.open()">Generar Enlace</BaseButton>
+            <template #cell-calificacion="{ item }">
+              <BaseStarRating :score="Number(item.calificacion)" />
             </template>
-
             <template #cell-comentario="{ item }">
-              <span class="truncate block max-w-xs">{{ item.comentario }}</span>
+              <div class="max-w-[140px] 2xl:max-w-[240px] truncate text-slate-700 dark:text-slate-300">
+                {{ item.comentario }}
+              </div>
             </template>
-
             <template #cell-legalOk="{ item }">
-              <i
-                v-if="item.legalOk"
-                class="fas fa-check-circle text-emerald-500"
-                title="Aceptó términos"
-              />
-              <i v-else class="fas fa-minus text-slate-300 dark:text-slate-600" />
+              <div class="text-center">
+                <i v-if="item.legalOk" class="fas fa-check-circle text-emerald-500"></i>
+                <i v-else class="fas fa-minus text-slate-300"></i>
+              </div>
             </template>
-
             <template #cell-respuesta="{ item }">
-              <span v-if="item.respuesta" class="truncate block max-w-xs">{{ item.respuesta }}</span>
-              <span v-else class="text-slate-400 italic text-xs">Sin respuesta</span>
+              <div
+                v-if="item.respuesta"
+                class="max-w-[140px] 2xl:max-w-[240px] truncate text-slate-700 dark:text-slate-300"
+              >
+                {{ item.respuesta }}
+              </div>
+              <span v-else class="text-slate-400 italic text-[11px]">Sin respuesta</span>
             </template>
-
             <template #cell-estado="{ item }">
               <StatusBadge :status="item.estado" />
             </template>
           </DataTable>
         </div>
 
-        <div v-else-if="activeSubTab === 'por_evaluar'" class="absolute inset-0 flex flex-col">
-          <SkeletonBlock v-if="isLoading" variant="table" :rows="8" />
+        <!-- PESTAÑA 2: POR EVALUAR (TOKENS GENERADOS) -->
+        <div v-else-if="activeSubTab === 'por_evaluar'" key="por_evaluar" class="absolute inset-0 flex flex-col">
+          <SkeletonBlock v-if="isLoading" variant="tokens" :rows="6" />
           <DataTable
             v-else
             :mobile-preview-count="3"
-            :columns="trackColumns"
-            :data="tracks"
+            :columns="tokenColumns"
+            :data="tokens"
             :is-loading="false"
-            search-placeholder="Buscar cliente..."
-            :filter-options="trackFilterOptions"
+            search-placeholder="Buscar cliente o servicio..."
+            :filter-options="tokenFilterOptions"
             filter-column-key="estado"
             @row-click="handleRowClick"
           >
@@ -295,7 +293,7 @@ async function revokeTrack(item) {
               <BaseButton
                 v-if="hasPermission('generar_enlace')"
                 icon="fas fa-plus"
-                @click="showGenerateModal = true"
+                @click="openNewLinkModal"
               >
                 <span class="hidden sm:inline ml-1">Pedir Reseña</span>
               </BaseButton>
@@ -303,14 +301,14 @@ async function revokeTrack(item) {
 
             <template #cell-dias="{ item }">
               <span
-                class="text-sm font-medium tabular-nums"
+                class="text-xs font-semibold tabular-nums"
                 :class="
                   item.estado === 'Expirado' || item.dias >= 7
-                    ? 'text-red-600 dark:text-red-400'
+                    ? 'text-red-500 dark:text-red-400'
                     : 'text-slate-600 dark:text-slate-400'
                 "
               >
-                {{ item.dias }} días
+                {{ item.dias === 0 ? 'Hoy' : `${item.dias} días` }}
               </span>
             </template>
 
@@ -322,9 +320,9 @@ async function revokeTrack(item) {
               <button
                 v-if="item.estado === 'Activo' && hasPermission('editar_resena')"
                 type="button"
-                class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                title="Revocar"
-                @click.stop="revokeTrack(item)"
+                class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                title="Revocar enlace"
+                @click.stop="revokeToken(item)"
               >
                 <i class="fas fa-ban text-xs" />
               </button>
@@ -334,14 +332,19 @@ async function revokeTrack(item) {
       </Transition>
     </div>
 
-    <!-- Manage-review modal (extract to GestionResenaModal in a later authorized step) -->
+    <!-- MODAL DE GESTIÓN DE RESEÑA RECIBIDA -->
     <BaseModal v-model="showManageModal" title="Gestión de Reseña" max-width="max-w-xl">
       <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cliente</label>
       <p class="text-sm font-semibold text-slate-800 dark:text-white mb-3">{{ selectedReview?.cliente }}</p>
       <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Comentario</label>
       <p class="text-sm text-slate-600 dark:text-slate-300 mb-4 whitespace-pre-wrap">{{ selectedReview?.comentario }}</p>
       <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Respuesta pública</label>
-      <textarea v-model="replyText" rows="4" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-sm" placeholder="Escribe o genera con IA..." />
+      <textarea
+        v-model="replyText"
+        rows="4"
+        class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-sm"
+        placeholder="Escribe o genera con IA..."
+      />
       <template #footer>
         <BaseButton variant="outline" @click="handleArchive(selectedReview)">Archivar</BaseButton>
         <BaseButton variant="outline" :is-loading="isAILoading" icon="fas fa-magic" @click="callGeminiAI">IA</BaseButton>
@@ -349,11 +352,23 @@ async function revokeTrack(item) {
       </template>
     </BaseModal>
 
-    <GenerarResenaModal v-model="showGenerateModal" @success="onGenerateSuccess" />
+    <!-- MODAL UNIFICADO DE ENLACES (CREACIÓN Y VISTA DE TICKET QR) -->
+    <GenerarResenaModal
+      v-model="showGenerateModal"
+      :initial-token="selectedToken"
+      @success="onGenerateSuccess"
+      @revoke="revokeToken"
+    />
   </div>
 </template>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>
