@@ -13,9 +13,9 @@ const createAsyncTab = (loader, variant, rows = 4) =>
     delay: 0
   })
 
-const ConfigPerfil = createAsyncTab(() => import('../user/PerfilView.vue'), 'bento', 8)
-const ConfigUsuarios = createAsyncTab(() => import('./UsuariosView.vue'), 'tokens', 6)
-const ConfigApariencia = createAsyncTab(() => import('./SistemaView.vue'), 'bento', 8)
+const ConfigPerfil = createAsyncTab(() => import('../user/PerfilView.vue'), 'form', 4)
+const ConfigUsuarios = createAsyncTab(() => import('./UsuariosView.vue'), 'table', 6)
+const ConfigApariencia = createAsyncTab(() => import('./SistemaView.vue'), 'form', 5)
 </script>
 
 <template>
@@ -33,7 +33,7 @@ const ConfigApariencia = createAsyncTab(() => import('./SistemaView.vue'), 'bent
 .fade-leave-active {
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
-.fade-enter-from
+.fade-enter-from,
 .fade-leave-to {
   opacity: 0;
   transform: translateY(4px);

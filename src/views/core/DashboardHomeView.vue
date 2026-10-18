@@ -159,22 +159,9 @@ onMounted(load)
 
     <!-- SKELETON LOADER -->
     <div v-if="isLoading" class="flex-1 min-h-0">
-      <SkeletonBlock variant="cards" :rows="8" />
+      <SkeletonBlock variant="bento" />
     </div>
 
-    <SkeletonBlock v-if="isLoading" variant="bento" :rows="8" />
-
-    <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <div
-        v-for="c in cards"
-        :key="c.key"
-        class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm"
-      >
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <p class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ c.label }}</p>
-            <p class="mt-1.5 text-2xl font-bold text-slate-800 dark:text-white tabular-nums">
-              {{ c.key === 'promedio' ? (kpis.promedio || 0).toFixed(1) : (kpis[c.key] ?? 0) }}
     <!-- BENTO GRID: Altura natural en móvil, estirable al 100% en Desktop -->
     <div v-else class="flex flex-col lg:flex-1 lg:min-h-0 lg:grid lg:grid-rows-12 gap-4">
       

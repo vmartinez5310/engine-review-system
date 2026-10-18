@@ -1,19 +1,21 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { apiClient } from '../../services/api'
 
+/** Canonical generate-link modal: v-model open, emit success with URL */
+const isOpen = defineModel({ type: Boolean, default: false })
 const emit = defineEmits(['success'])
 
-const isOpen = ref(false)
 const isGenerating = ref(false)
 const requestForm = ref({ cliente: '', servicio: '' })
 const generatedResult = ref(null)
 
-function open() {
-  requestForm.value = { cliente: '', servicio: '' }
-  generatedResult.value = null
-  isOpen.value = true
-}
+watch(isOpen, (open) => {
+  if (open) {
+    requestForm.value = { cliente: '', servicio: '' }
+    generatedResult.value = null
+  }
+})
 
 function close() {
   isOpen.value = false
@@ -21,19 +23,18 @@ function close() {
 
 async function generateReviewLink() {
   if (!requestForm.value.cliente || !requestForm.value.servicio) {
-    return window.Swal?.fire('Atencion', 'Ingresa cliente y servicio', 'warning')
+    return window.Swal?.fire('Atención', 'Ingresa cliente y servicio', 'warning')
   }
 
   isGenerating.value = true
   try {
-    // Accion real del backend GAS: generate_link
     const response = await apiClient.post('generate_link', {
       nombre: requestForm.value.cliente,
       servicio: requestForm.value.servicio
     })
 
     const link = response.url || response.link
-    if (!link) throw new Error('El servidor no devolvio una URL valida')
+    if (!link) throw new Error('El servidor no devolvió una URL válida')
 
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(link)}&margin=10`
 
@@ -48,7 +49,11 @@ async function generateReviewLink() {
       qrUrl
     }
 
-    emit('success')
+    emit('success', {
+      url: link,
+      cliente: requestForm.value.cliente,
+      servicio: requestForm.value.servicio
+    })
   } catch (e) {
     window.Swal?.fire('Error', e.message || 'No se pudo generar el enlace.', 'error')
   } finally {
@@ -57,15 +62,16 @@ async function generateReviewLink() {
 }
 
 async function shareLinkSystem() {
+  if (!generatedResult.value?.link) return
   if (navigator.share) {
     try {
       await navigator.share({
-        title: 'Evalua nuestro servicio',
-        text: `Hola ${generatedResult.value.cliente}, por favor ayudanos evaluando nuestro servicio:`,
+        title: 'Evalúa nuestro servicio',
+        text: `Hola ${generatedResult.value.cliente}, por favor ayúdanos evaluando nuestro servicio:`,
         url: generatedResult.value.link
       })
-    } catch (err) {
-      console.log('Compartir cancelado', err)
+    } catch {
+      /* user cancelled */
     }
   } else {
     copyToClipboard(generatedResult.value.link)
@@ -73,8 +79,9 @@ async function shareLinkSystem() {
 }
 
 function sendWhatsAppNewLink() {
+  if (!generatedResult.value?.link) return
   const text = encodeURIComponent(
-    `Hola ${generatedResult.value.cliente}. Gracias por confiar en nosotros para: ${generatedResult.value.servicio}. Podrias apoyarnos con una breve calificacion aqui? ${generatedResult.value.link}`
+    `Hola ${generatedResult.value.cliente}. Gracias por confiar en nosotros para: ${generatedResult.value.servicio}. ¿Podrías apoyarnos con una breve calificación aquí? ${generatedResult.value.link}`
   )
   window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
 }
@@ -82,16 +89,18 @@ function sendWhatsAppNewLink() {
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text)
   window.Swal?.fire({
-    icon: 'success', title: 'Enlace copiado', toast: true,
-    position: 'top-end', showConfirmButton: false, timer: 1500
+    icon: 'success',
+    title: 'Enlace copiado',
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1500
   })
 }
-
-defineExpose({ open })
 </script>
 
 <template>
-  <BaseModal v-model="isOpen" :title="!generatedResult ? 'Nuevo Enlace de Resena' : ''">
+  <BaseModal v-model="isOpen" :title="!generatedResult ? 'Nuevo Enlace de Reseña' : ''">
     <template v-if="!generatedResult" #header-icon>
       <i class="fas fa-link text-brand"></i>
     </template>
@@ -103,7 +112,7 @@ defineExpose({ open })
           v-model="requestForm.cliente"
           type="text"
           class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-sm transition-colors"
-          placeholder="Ej. Juan Perez"
+          placeholder="Ej. Juan Pérez"
         />
       </div>
       <div>
@@ -120,12 +129,12 @@ defineExpose({ open })
     <div v-else class="flex flex-col items-center animate-fadeIn w-full -mt-4">
       <div class="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 dark:border-slate-700 overflow-hidden relative">
         <div class="bg-brand text-white text-center py-3.5 font-semibold text-sm tracking-wide">
-          Codigo QR de Evaluacion
+          Código QR de Evaluación
         </div>
         <div class="pt-8 pb-6 px-6 flex flex-col items-center bg-white dark:bg-slate-800">
           <img :src="generatedResult.qrUrl" alt="QR Code" class="w-48 h-48 object-contain rounded-lg" />
           <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-6 text-center leading-relaxed">
-            Tus clientes pueden escanear este codigo QR para dejar una resena rapidamente.
+            Tus clientes pueden escanear este código QR para dejar una reseña rápidamente.
           </p>
         </div>
         <div class="relative flex items-center justify-center h-6 bg-white dark:bg-slate-800">
@@ -136,24 +145,24 @@ defineExpose({ open })
         <div class="p-6 pt-4 bg-white dark:bg-slate-800 text-[13px] text-slate-500 dark:text-slate-400 space-y-2.5">
           <p><strong class="text-slate-800 dark:text-slate-200 font-semibold mr-1">Cliente:</strong> {{ generatedResult.cliente }}</p>
           <p><strong class="text-slate-800 dark:text-slate-200 font-semibold mr-1">Servicio:</strong> {{ generatedResult.servicio }}</p>
-          <p><strong class="text-slate-800 dark:text-slate-200 font-semibold mr-1">Emision:</strong> {{ generatedResult.fecha }}</p>
+          <p><strong class="text-slate-800 dark:text-slate-200 font-semibold mr-1">Emisión:</strong> {{ generatedResult.fecha }}</p>
         </div>
       </div>
 
       <div class="flex justify-center gap-6 sm:gap-10 mt-8 mb-2">
-        <button @click="shareLinkSystem" class="flex flex-col items-center gap-2 group outline-none">
+        <button type="button" class="flex flex-col items-center gap-2 group outline-none" @click="shareLinkSystem">
           <div class="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 transition-colors shadow-sm cursor-pointer">
             <i class="fas fa-share-nodes"></i>
           </div>
           <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Compartir</span>
         </button>
-        <button @click="copyToClipboard(generatedResult.link)" class="flex flex-col items-center gap-2 group outline-none">
+        <button type="button" class="flex flex-col items-center gap-2 group outline-none" @click="copyToClipboard(generatedResult.link)">
           <div class="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors shadow-sm cursor-pointer">
             <i class="fas fa-link"></i>
           </div>
           <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Copiar</span>
         </button>
-        <button @click="sendWhatsAppNewLink" class="flex flex-col items-center gap-2 group outline-none">
+        <button type="button" class="flex flex-col items-center gap-2 group outline-none" @click="sendWhatsAppNewLink">
           <div class="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xl group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors shadow-sm cursor-pointer">
             <i class="fab fa-whatsapp"></i>
           </div>
