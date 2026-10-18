@@ -10,7 +10,6 @@ const props = defineProps({
 
 const isLoading = ref(true)
 const isSaving = ref(false)
-
 const profile = ref({
   idUser: '',
   nombre: '',
@@ -21,13 +20,13 @@ const profile = ref({
 })
 
 const avatarPreview = computed(() => {
-  const u = (profile.value.logo || '').trim()
-  return /^https?:\/\//i.test(u) ? u : null
+  const url = profile.value.logo?.trim()
+  return url && /^https?:\/\//i.test(url) ? url : null
 })
 
-function initials(name) {
-  return (name || 'U').substring(0, 2).toUpperCase()
-}
+const initials = computed(() =>
+  (profile.value.nombre || 'U').slice(0, 2).toUpperCase()
+)
 
 async function loadProfile() {
   isLoading.value = true
@@ -51,22 +50,30 @@ async function loadProfile() {
 }
 
 async function saveProfile() {
-  if (!profile.value.nombre.trim()) {
+  const nombre = profile.value.nombre.trim()
+  const email = profile.value.email.trim()
+
+  if (!nombre) {
     return window.Swal?.fire('Atención', 'El nombre no puede estar vacío', 'warning')
   }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return window.Swal?.fire('Atención', 'Ingresa un correo válido', 'warning')
+  }
+
   isSaving.value = true
   try {
-    const cleanName = profile.value.nombre.trim()
-    const cleanLogo = (profile.value.logo || '').trim()
+    const logo = profile.value.logo?.trim() || ''
 
     await apiClient.post('update_profile', {
-      nombre: cleanName,
-      logo: cleanLogo
+      nombre,
+      email,
+      logo
     })
 
     if (authState.user) {
-      authState.user.nombre = cleanName
-      authState.user.logo = cleanLogo
+      authState.user.nombre = nombre
+      authState.user.email = email
+      authState.user.logo = logo
     }
 
     window.Swal?.fire({
@@ -88,148 +95,126 @@ onMounted(loadProfile)
 </script>
 
 <template>
-  <div class="h-full w-full flex flex-col overflow-y-auto pb-6 lg:pb-2 select-none">
-    
-    <!-- HEADER EJECUTIVO UNIFICADO -->
-    <div class="shrink-0 flex flex-wrap items-center justify-between gap-4 pb-3.5 mb-4 border-b border-slate-200/80 dark:border-slate-800/80">
+  <div class="h-full w-full flex flex-col overflow-y-auto pb-6 select-none">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4 pb-5 mb-6 border-b border-white/10">
       <div>
-        <div class="flex items-center gap-2">
-          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-            {{ props.config?.nombre || 'Sistema de Reseñas' }} • Cuenta de Operador
-          </span>
-        </div>
-        <div class="flex items-baseline gap-3 mt-0.5">
-          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Mi Perfil
-          </h2>
-        </div>
+        <p class="text-xs font-medium uppercase tracking-wider text-slate-400">
+          {{ props.config?.nombre || 'Engine Review' }}
+        </p>
+        <h2 class="text-2xl font-semibold text-white mt-1">Tu perfil</h2>
+        <p class="text-sm text-slate-400 mt-1">
+          Así te verán los clientes en las invitaciones y reseñas
+        </p>
       </div>
 
-      <div class="flex items-center gap-2.5 shrink-0">
-        <BaseButton
-          :is-loading="isSaving"
-          icon="fas fa-save"
-          @click="saveProfile"
-        >
-          Guardar cambios
-        </BaseButton>
-      </div>
+      <BaseButton :is-loading="isSaving" @click="saveProfile">
+        Guardar cambios
+      </BaseButton>
     </div>
 
-    <!-- SKELETON EXACTO -->
-    <div v-if="isLoading" class="flex-1 min-h-0">
-      <SkeletonBlock variant="perfil" />
-    </div>
+    <SkeletonBlock v-if="isLoading" variant="perfil" />
 
-    <!-- BENTO GRID ENFOCADO (4 Cols Credencial + 8 Cols Edición) -->
-    <div v-else class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
-      
-      <!-- COLUMNA IZQUIERDA (4 cols): TARJETA DE IDENTIDAD LIMPIA -->
-      <div class="lg:col-span-4 relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 flex flex-col shadow-sm">
-        <div class="absolute -right-16 -top-16 w-64 h-64 bg-sky-500/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-            Identidad Activa
+      <!-- Preview / Identity -->
+      <div class="lg:col-span-4 h-full rounded-2xl border border-white/10 bg-white/5 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-xs font-medium uppercase tracking-wider text-slate-400">
+            Cómo apareces
           </span>
-          <StatusBadge :status="profile.estado || 'Activo'" />
+          <StatusBadge :status="profile.estado" />
         </div>
 
         <div class="flex flex-col items-center text-center">
-          <div class="w-32 h-32 rounded-2xl overflow-hidden bg-sky-500/15 border border-sky-500/30 flex items-center justify-center ring-4 ring-sky-500/20 shadow-lg shadow-sky-500/10">
+          <div class="w-28 h-28 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center overflow-hidden">
             <img
               v-if="avatarPreview"
               :src="avatarPreview"
               :alt="profile.nombre"
               class="w-full h-full object-cover"
-              @error="$event.target.style.display = 'none'"
             />
-            <span v-else class="text-4xl font-extrabold text-sky-400">
-              {{ initials(profile.nombre) }}
+            <span v-else class="text-3xl font-semibold text-sky-400">
+              {{ initials }}
             </span>
           </div>
 
-          <h3 class="mt-5 text-2xl font-bold text-slate-900 dark:text-white truncate max-w-full">
-            {{ profile.nombre || 'Operador' }}
+          <h3 class="mt-5 text-xl font-semibold text-white truncate max-w-full">
+            {{ profile.nombre || 'Tu nombre' }}
           </h3>
           <p class="text-sm text-slate-400 mt-1 truncate max-w-full">
-            {{ profile.email }}
+            {{ profile.email || 'tu@email.com' }}
           </p>
 
-          <span class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-300 border border-sky-500/30">
-            <i class="fas fa-shield-alt text-[10px]"></i>
+          <span class="mt-4 inline-flex px-3 py-1 text-xs font-medium uppercase tracking-wider rounded-lg bg-sky-500/10 text-sky-300 border border-sky-500/20">
             {{ profile.rol }}
           </span>
         </div>
 
-        <div class="mt-auto pt-4 border-t border-white/10 flex items-center justify-between text-xs">
-          <span class="text-slate-400">ID de Operador</span>
-          <span class="font-mono text-slate-200 bg-slate-950/40 px-2 py-0.5 rounded">{{ profile.idUser || 'SESIÓN ACTIVA' }}</span>
+        <div class="mt-8 pt-4 border-t border-white/10 text-xs text-slate-500 text-center">
+          Vista previa en tiempo real
         </div>
       </div>
 
-      <!-- COLUMNA DERECHA (8 cols): PREFERENCIAS EDITABLES SIN RUIDO -->
+      <!-- Editable fields -->
       <form
-        class="lg:col-span-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 flex flex-col justify-between gap-4 shadow-sm"
+        class="lg:col-span-8 h-full rounded-2xl border border-white/10 bg-white/5 p-6 flex flex-col"
         @submit.prevent="saveProfile"
       >
-        <div class="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800/80 pb-3">
-          <div class="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-            <i class="fas fa-sliders-h text-xs"></i>
-          </div>
-          <div>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              Perfil Público del Operador
-            </h3>
-            <p class="text-[11px] text-slate-400 dark:text-slate-500">
-              Personaliza cómo aparece tu nombre y fotografía en las invitaciones y registros
-            </p>
-          </div>
+        <div class="mb-6">
+          <h3 class="text-sm font-medium text-white">Información pública</h3>
+          <p class="text-xs text-slate-400 mt-1">
+            Estos datos aparecen en las invitaciones que envías y en los registros de reseñas
+          </p>
         </div>
 
-        <div class="space-y-5 my-auto">
+        <div class="space-y-5 flex-1">
           <BaseInput
             v-model="profile.nombre"
             label="Nombre visible"
-            placeholder="Ej. Samuel Trujillo"
-            icon="fas fa-user"
+            placeholder="Cómo quieres que te llamen"
           />
 
-          <div class="p-4 rounded-xl bg-slate-950/40 border border-white/10 flex flex-col sm:flex-row sm:items-center gap-4">
-            <div class="flex-1 min-w-0">
+          <BaseInput
+            v-model="profile.email"
+            label="Correo electrónico"
+            type="email"
+            placeholder="tu@email.com"
+          />
+
+          <div class="flex flex-col sm:flex-row gap-4 items-start">
+            <div class="flex-1">
               <BaseInput
                 v-model="profile.logo"
-                label="Fotografía / Avatar (URL)"
+                label="Foto o logo (URL)"
                 placeholder="https://..."
-                icon="fas fa-image"
               />
-              <p class="text-[11px] text-slate-400 mt-1">
-                URL pública de imagen. Se actualiza al instante en la barra superior.
+              <p class="text-xs text-slate-500 mt-1.5">
+                Se actualiza al instante en la barra superior y en las invitaciones
               </p>
             </div>
 
-            <div class="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center shrink-0 overflow-hidden self-center">
+            <div class="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
               <img
                 v-if="avatarPreview"
                 :src="avatarPreview"
                 alt="Preview"
                 class="w-full h-full object-cover"
-                @error="$event.target.style.display = 'none'"
               />
               <i v-else class="fas fa-user text-slate-500 text-sm"></i>
             </div>
           </div>
         </div>
 
-        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-          <span>El correo electrónico y el rol son administrados por el sistema central.</span>
-          <span class="text-emerald-400 font-semibold flex items-center gap-1.5">
-            <i class="fas fa-check-circle"></i> Sincronizado
+        <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+          <span>Los cambios se reflejan inmediatamente</span>
+          <span class="text-emerald-400 flex items-center gap-1.5">
+            <i class="fas fa-check-circle text-[10px]"></i>
+            Sincronizado
           </span>
         </div>
       </form>
-
     </div>
   </div>
 </template>

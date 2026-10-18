@@ -12,7 +12,8 @@ const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 
 // 1. Estado inicial fijado en 'home' (Inicio)
-const activeTab = ref('home') 
+const activeTab = ref('home')
+const subTabToOpen = ref(null)
 
 // 2. Carga perezosa de vistas SIN duplicados
 const DashboardHomeView = defineAsyncComponent(() => import('../../views/core/DashboardHomeView.vue'))
@@ -60,8 +61,9 @@ const totalNotifications = computed(() => {
   return (notifications.value.resenasNuevas || 0) + (notifications.value.seguimientosAtrasados || 0)
 })
 
-function navigateTo(tab) {
+function navigateTo(tab, subTab = null) {
   activeTab.value = tab
+  subTabToOpen.value = subTab
   isUserMenuOpen.value = false
   isNotifMenuOpen.value = false
   isSidebarOpen.value = false
@@ -99,45 +101,49 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-screen flex w-full relative overflow-hidden text-slate-800 dark:text-slate-200 antialiased bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+  <div
+    class="h-screen flex w-full relative overflow-hidden text-slate-800 dark:text-slate-200 antialiased bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
     <aside :class="[
-        'fixed inset-y-0 left-0 bg-[#0F172A] border-r border-slate-800 z-50 transform md:relative transition-all duration-300 ease-in-out flex flex-col shrink-0',
-        isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0',
-        isMinified ? 'w-20' : 'w-64'
-      ]">
+      'fixed inset-y-0 left-0 bg-[#0F172A] border-r border-slate-800 z-50 transform md:relative transition-all duration-300 ease-in-out flex flex-col shrink-0',
+      isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0',
+      isMinified ? 'w-20' : 'w-64'
+    ]">
       <button @click="isMinified = !isMinified"
         class="hidden md:flex absolute -right-3.5 top-8 w-7 h-7 bg-slate-800 border border-slate-700 rounded-full items-center justify-center text-slate-400 hover:text-white shadow-md z-[60] transition-colors">
         <i :class="isMinified ? 'fas fa-chevron-right text-[10px]' : 'fas fa-chevron-left text-[10px]'"></i>
       </button>
 
-      <div class="p-6 flex items-center h-20 shrink-0 overflow-hidden" :class="isMinified ? 'justify-center px-0' : 'justify-start'">
-        <div v-if="isMinified" class="w-10 h-10 bg-brand rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-brand/20 shrink-0">
+      <div class="p-6 flex items-center h-20 shrink-0 overflow-hidden"
+        :class="isMinified ? 'justify-center px-0' : 'justify-start'">
+        <div v-if="isMinified"
+          class="w-10 h-10 bg-brand rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-brand/20 shrink-0">
           <img v-if="config?.logoV" :src="config.logoV" class="w-full h-full object-contain p-1" />
           <span v-else class="text-xl drop-shadow-md">{{ config?.nombre?.charAt(0) || 'I' }}</span>
         </div>
         <div v-else class="flex items-center gap-3 w-full">
-           <img v-if="config?.logoH" :src="config.logoH" class="h-8 object-contain max-w-[140px]" />
-           <div v-else class="flex items-center gap-3">
-              <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold shadow-lg shrink-0">
-                  <span class="drop-shadow-md">{{ config?.nombre?.charAt(0) || 'I' }}</span>
-              </div>
-              <h1 class="font-bold text-white text-lg tracking-tight truncate">{{ config?.nombre || 'Dashboard' }}</h1>
-           </div>
+          <img v-if="config?.logoH" :src="config.logoH" class="h-8 object-contain max-w-[140px]" />
+          <div v-else class="flex items-center gap-3">
+            <div
+              class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold shadow-lg shrink-0">
+              <span class="drop-shadow-md">{{ config?.nombre?.charAt(0) || 'I' }}</span>
+            </div>
+            <h1 class="font-bold text-white text-lg tracking-tight truncate">{{ config?.nombre || 'Dashboard' }}</h1>
+          </div>
         </div>
       </div>
 
       <nav class="flex-1 px-3 py-2 flex flex-col gap-1.5 overflow-y-auto custom-scrollbar">
         <!-- Ítem 1: Inicio (Único botón, apuntando a 'home') -->
-        <button @click="navigateTo('home')" 
+        <button @click="navigateTo('home')"
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'home' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <i class="fas fa-home text-lg w-6 text-center"></i>
             <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Inicio</span></Transition>
           </div>
         </button>
-        
+
         <!-- Ítem 2: Reseñas -->
-        <button @click="navigateTo('resenas')" 
+        <button @click="navigateTo('resenas')"
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'resenas' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <i class="fas fa-star text-lg w-6 text-center"></i>
@@ -150,7 +156,8 @@ onMounted(() => {
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'usuarios' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <i class="fas fa-users text-lg w-6 text-center"></i>
-            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Usuarios</span></Transition>
+            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Usuarios</span>
+            </Transition>
           </div>
         </button>
 
@@ -159,7 +166,8 @@ onMounted(() => {
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'sistema' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <i class="fas fa-cog text-lg w-6 text-center"></i>
-            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Configuración</span></Transition>
+            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Configuración</span>
+            </Transition>
           </div>
         </button>
       </nav>
@@ -169,7 +177,8 @@ onMounted(() => {
           :class="['w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm', activeTab === 'perfil' ? 'bg-brand text-white shadow-md shadow-brand/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/50']">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <i class="fas fa-user-circle text-lg w-6 text-center"></i>
-            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Mi Perfil</span></Transition>
+            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Mi Perfil</span>
+            </Transition>
           </div>
         </button>
 
@@ -177,18 +186,23 @@ onMounted(() => {
           class="w-full flex items-center px-3 py-3 rounded-xl transition-all font-medium text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/10 group">
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <i class="fas fa-sign-out-alt text-lg w-6 text-center group-hover:-translate-x-1 transition-transform"></i>
-            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Cerrar Sesión</span></Transition>
+            <Transition name="fade-sidebar"><span v-show="!isMinified" class="ml-3 truncate">Cerrar Sesión</span>
+            </Transition>
           </div>
         </button>
       </div>
     </aside>
 
-    <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-slate-900/60 z-40 md:hidden backdrop-blur-sm transition-opacity"></div>
+    <div v-if="isSidebarOpen" @click="isSidebarOpen = false"
+      class="fixed inset-0 bg-slate-900/60 z-40 md:hidden backdrop-blur-sm transition-opacity"></div>
 
-    <main class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden dark:bg-slate-900 transition-colors relative z-10">
-      <header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-16 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 sticky top-0">
+    <main
+      class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden dark:bg-slate-900 transition-colors relative z-10">
+      <header
+        class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-16 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 sticky top-0">
         <div class="flex items-center gap-3">
-          <button @click="isSidebarOpen = !isSidebarOpen" class="md:hidden text-slate-500 hover:text-brand p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <button @click="isSidebarOpen = !isSidebarOpen"
+            class="md:hidden text-slate-500 hover:text-brand p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
             <i class="fas fa-bars text-xl"></i>
           </button>
           <span class="inline-block text-sm font-semibold text-slate-400 dark:text-slate-500 ml-2">
@@ -197,67 +211,129 @@ onMounted(() => {
         </div>
 
         <div class="flex items-center gap-3 sm:gap-4">
+          <!-- Menú de Notificaciones -->
           <div class="relative flex items-center h-full">
-            <button @click="isNotifMenuOpen = !isNotifMenuOpen; isUserMenuOpen = false" class="relative w-10 h-10 flex items-center justify-center text-slate-400 hover:text-brand dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+            <button @click="isNotifMenuOpen = !isNotifMenuOpen; isUserMenuOpen = false"
+              class="relative w-10 h-10 flex items-center justify-center text-slate-400 hover:text-brand dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
               <i class="fas fa-bell text-[1.1rem]"></i>
-              <span v-if="totalNotifications > 0" class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+              <span v-if="totalNotifications > 0"
+                class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
             </button>
             <div v-if="isNotifMenuOpen" @click="isNotifMenuOpen = false" class="fixed inset-0 z-40"></div>
-            <div v-if="isNotifMenuOpen" class="absolute right-0 top-[calc(100%+12px)] w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+
+            <div v-if="isNotifMenuOpen"
+              class="absolute right-0 top-[calc(100%+12px)] w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
               <div class="p-4 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center">
                 <h4 class="text-sm font-bold text-slate-800 dark:text-white">Notificaciones</h4>
-                <span v-if="totalNotifications > 0" class="text-[10px] font-bold bg-brand/10 text-brand px-2 py-0.5 rounded-full">{{ totalNotifications }}</span>
+                <span v-if="totalNotifications > 0"
+                  class="text-[10px] font-bold bg-brand/10 text-brand px-2 py-0.5 rounded-full">{{ totalNotifications
+                  }}</span>
               </div>
-              <div class="p-4 text-center text-sm text-slate-500" v-if="totalNotifications === 0">Sin notificaciones</div>
+
+              <div class="p-4 text-center text-sm text-slate-500" v-if="totalNotifications === 0">Sin notificaciones
+              </div>
               <div v-else class="flex flex-col">
-                <button v-if="notifications.resenasNuevas > 0" @click="navigateTo('resenas')" class="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700/50 text-sm">
-                  {{ notifications.resenasNuevas }} reseñas pendientes
-                </button>
-                <button v-if="notifications.seguimientosAtrasados > 0" @click="navigateTo('resenas')" class="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-sm">
-                  {{ notifications.seguimientosAtrasados }} seguimientos atrasados
-                </button>
-              </div>
+  <!-- Dentro de las opciones del menú de notificaciones -->
+  <div class="flex flex-col">
+    <!-- Reseñas Pendientes -> Inserta ?subtab=recibidas y navega -->
+    <button v-if="notifications.resenasNuevas > 0"
+      @click="navigateTo('resenas', 'recibidas')"
+      class="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700/50 text-sm flex items-center gap-3 text-slate-700 dark:text-slate-300">
+      <i class="fas fa-star text-amber-500 shrink-0"></i>
+      <span>Tienes {{ notifications.resenasNuevas }} reseñas por aprobar</span>
+    </button>
+
+    <!-- Seguimientos Atrasados -->
+    <button v-if="notifications.seguimientosAtrasados > 0"
+      @click="navigateTo('resenas', 'por_evaluar')"
+      class="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-sm flex items-center gap-3 text-slate-700 dark:text-slate-300">
+      <i class="fas fa-clock text-red-500 shrink-0"></i>
+      <span>Tienes {{ notifications.seguimientosAtrasados }} seguimientos atrasados</span>
+    </button>
+  </div>
+</div>
             </div>
           </div>
 
           <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
+          <!-- Menú de Usuario -->
           <div class="relative flex items-center h-full">
-            <button @click="isUserMenuOpen = !isUserMenuOpen; isNotifMenuOpen = false" class="flex items-center gap-3 pl-2 py-1 pr-1 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <button @click="isUserMenuOpen = !isUserMenuOpen; isNotifMenuOpen = false"
+              class="flex items-center gap-3 pl-2 py-1 pr-1 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               <div class="hidden sm:flex flex-col items-end">
                 <span class="text-sm font-bold text-slate-800 dark:text-white leading-tight">{{ userName }}</span>
                 <span class="text-[10px] font-semibold text-brand uppercase tracking-wider">{{ userRole }}</span>
               </div>
-              <div class="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm shadow-md uppercase overflow-hidden">
-                <img v-if="currentUser.logo" :src="currentUser.logo" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+              <div
+                class="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm shadow-md uppercase overflow-hidden">
+                <img v-if="currentUser.logo" :src="currentUser.logo" class="w-full h-full object-cover"
+                  @error="$event.target.style.display = 'none'" />
                 <template v-else>{{ userInitials }}</template>
               </div>
             </button>
             <div v-if="isUserMenuOpen" @click="isUserMenuOpen = false" class="fixed inset-0 z-40"></div>
-            <div v-if="isUserMenuOpen" class="absolute right-0 top-full mt-3 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+
+            <div v-if="isUserMenuOpen"
+              class="absolute right-0 top-full mt-3 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
               <div class="p-4 border-b border-slate-100 dark:border-slate-700/50">
                 <p class="text-sm font-bold text-slate-800 dark:text-white truncate">{{ currentUser.nombre }}</p>
                 <p class="text-xs text-slate-500 truncate mt-0.5">{{ currentUser.email }}</p>
               </div>
-              <div class="p-2">
-                <button @click="navigateTo('perfil')" class="w-full text-left px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl">Mi Perfil</button>
-                <button @click="toggleTheme" class="w-full text-left px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl">Modo Oscuro</button>
-                <button @click="logout" class="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl">Cerrar sesión</button>
+              <div class="p-2 space-y-0.5">
+                <!-- Mi Perfil -->
+                <button @click="navigateTo('perfil'); isUserMenuOpen = false"
+                  class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                  <i class="fas fa-user w-4 text-slate-400"></i>
+                  <span>Mi Perfil</span>
+                </button>
+
+                <!-- Toggle Modo Oscuro -->
+                <div @click="toggleTheme"
+                  class="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl cursor-pointer transition-colors">
+                  <div class="flex items-center gap-3">
+                    <i :class="isDarkMode ? 'fas fa-moon text-amber-400' : 'fas fa-sun text-slate-400'"
+                      class="w-4 transition-colors"></i>
+                    <span>Modo Oscuro</span>
+                  </div>
+                  <!-- Componente Switch Toggle visual -->
+                  <div :class="isDarkMode ? 'bg-brand' : 'bg-slate-200 dark:bg-slate-600'"
+                    class="w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out relative flex items-center">
+                    <div :class="isDarkMode ? 'translate-x-4' : 'translate-x-0'"
+                      class="w-4 h-4 rounded-full bg-white shadow transform transition-transform duration-200 ease-in-out">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cerrar Sesión -->
+                <button @click="logout"
+                  class="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors">
+                  <i class="fas fa-sign-out-alt w-4 text-red-500"></i>
+                  <span>Cerrar sesión</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
+
       </header>
 
       <div class="flex-1 overflow-hidden p-3 sm:p-5">
         <!-- Transition wrapper retirado para evitar bugs de nodos múltiples -->
-        <component :is="currentViewComponent" :config="config" />
+        <component :is="currentViewComponent" :config="config" :initial-sub-tab="subTabToOpen" />
       </div>
     </main>
   </div>
 </template>
 
 <style scoped>
-.fade-sidebar-enter-active, .fade-sidebar-leave-active { transition: opacity 0.15s ease; }
-.fade-sidebar-enter-from, .fade-sidebar-leave-to { opacity: 0; }
+.fade-sidebar-enter-active,
+.fade-sidebar-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-sidebar-enter-from,
+.fade-sidebar-leave-to {
+  opacity: 0;
+}
 </style>

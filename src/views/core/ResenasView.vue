@@ -4,6 +4,13 @@ import { apiClient } from '../../services/api'
 import { hasPermission } from '../../composables/useAuth'
 import GenerarResenaModal from './GenerarResenaModal.vue'
 
+const props = defineProps({
+  initialSubTab: {
+    type: String,
+    default: null
+  }
+})
+
 // --- ESTADOS PRINCIPALES ---
 const activeSubTab = ref('recibidas') // 'recibidas' | 'por_evaluar'
 const isLoading = ref(true)
@@ -48,7 +55,7 @@ const tokenColumns = [
 
 const tokenFilterOptions = ['Activo', 'Usado', 'Expirado', 'Revocado']
 
-// --- CARGA DE DATOS ---
+// --- CARGA DE DATOS (Modificado para capturar subpestañas sin router) ---
 async function fetchData() {
   isLoading.value = true
   try {
@@ -64,9 +71,35 @@ async function fetchData() {
   }
 }
 
-onMounted(fetchData)
-watch(activeSubTab, fetchData)
+onMounted(() => {
+  // Prioritize prop from parent navigation, then URL param as fallback
+  let targetSub = props.initialSubTab
+  if (!targetSub) {
+    const params = new URLSearchParams(window.location.search)
+    targetSub = params.get('subtab')
+    if (targetSub) {
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname
+      window.history.replaceState({ path: cleanUrl }, '', cleanUrl)
+    }
+  }
 
+  if (targetSub === 'recibidas' || targetSub === 'por_evaluar') {
+    if (activeSubTab.value !== targetSub) {
+      activeSubTab.value = targetSub
+      return // watch will fetch
+    }
+  }
+  fetchData()
+})
+
+watch(() => props.initialSubTab, (newSub) => {
+  if (newSub === 'recibidas' || newSub === 'por_evaluar') {
+    activeSubTab.value = newSub
+  }
+})
+
+// Mantenemos el watcher para los cambios manuales que haga el usuario haciendo clic en los botones superiores
+watch(activeSubTab, fetchData)
 // --- APERTURA UNIFICADA DE MODALES ---
 function openNewLinkModal() {
   selectedToken.value = null
