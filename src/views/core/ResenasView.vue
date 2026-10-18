@@ -4,11 +4,16 @@ import { apiClient } from '../../services/api'
 import { hasPermission } from '../../composables/useAuth'
 import GenerarResenaModal from './GenerarResenaModal.vue'
 
-const activeSubTab = ref('recibidas')
+// --- ESTADOS PRINCIPALES ---
+const activeSubTab = ref('recibidas') // Solo 'recibidas' y 'enlaces'
 const isLoading = ref(true)
 const reviews = ref([])
-const tracks = ref([])
+const tokens = ref([])
 
+// Variables de entorno
+const URL_Frontend_App = window.URL_Frontend_App || window.location.origin
+
+// --- ESTADOS: MODALES ---
 const showManageModal = ref(false)
 const selectedReview = ref(null)
 const replyText = ref('')
@@ -16,36 +21,39 @@ const isAILoading = ref(false)
 
 const showGenerateModal = ref(false)
 
+const modalGenerarRef = ref(null)
+
+// --- CONFIGURACIÓN DE COLUMNAS ---
 const reviewColumns = computed(() => {
   const baseCols = [
     { key: 'fecha', label: 'Fecha' },
     { key: 'cliente', label: 'Cliente', required: true },
-    { key: 'servicio', label: 'Servicio/Zona', hidden: true },
+    { key: 'servicio', label: 'Servicio', hidden: true },
     { key: 'legalOk', label: 'LEGAL', hidden: true },
     { key: 'calificacion', label: 'Calif.', required: true },
     { key: 'comentario', label: 'Reseña' },
     { key: 'estado', label: 'Estado', required: true }
   ]
-  if (hasPermission('editar_resena')) {
-    baseCols.push({ key: 'respuesta', label: 'Respuesta', hidden: true })
-  }
+  if (hasPermission('editar_resena')) baseCols.push({ key: 'respuesta', label: 'Respuesta', hidden: true })
   return baseCols
 })
 
-const trackColumns = [
-  { key: 'fecha', label: 'Fecha' },
+// Máximo 4 visibles por defecto (hidden: true oculta las secundarias)
+const tokenColumns = [
+  { key: 'fecha', label: 'Generado', hidden: true },
   { key: 'cliente', label: 'Cliente', required: true },
-  { key: 'servicio', label: 'Servicio' },
-  { key: 'dias', label: 'Días' },
+  { key: 'servicio', label: 'Servicio', hidden: true },
+  { key: 'dias', label: 'Días Transcurridos' },
+  { key: 'asesor', label: 'Asesor', hidden: true },
   { key: 'estado', label: 'Estado', required: true }
 ]
 
-const trackFilterOptions = ['Activo', 'Usado', 'Expirado', 'Revocado']
-
-async function fetchReviews() {
+// --- CARGA DE DATOS ---
+async function fetchData() {
   isLoading.value = true
   try {
-    reviews.value = await apiClient.post('get_dashboard_reviews')
+    if (activeSubTab.value === 'recibidas') reviews.value = await apiClient.post('get_dashboard_reviews')
+    if (activeSubTab.value === 'enlaces') tokens.value = await apiClient.post('get_tokens')
   } catch (e) {
     window.Swal?.fire('Error', e.message, 'error')
   } finally {
@@ -53,24 +61,10 @@ async function fetchReviews() {
   }
 }
 
-async function fetchTracks() {
-  isLoading.value = true
-  try {
-    tracks.value = await apiClient.post('get_tracking')
-  } catch (e) {
-    window.Swal?.fire('Error', e.message, 'error')
-  } finally {
-    isLoading.value = false
-  }
-}
+onMounted(fetchData)
+watch(activeSubTab, fetchData)
 
-onMounted(fetchReviews)
-
-watch(activeSubTab, (tab) => {
-  if (tab === 'recibidas') fetchReviews()
-  if (tab === 'por_evaluar') fetchTracks()
-})
-
+// --- GESTIÓN DE RESEÑAS RECIBIDAS ---
 function openManageModal(review) {
   selectedReview.value = review
   replyText.value = review.respuesta || ''
@@ -78,44 +72,19 @@ function openManageModal(review) {
 }
 
 async function saveApproval() {
-  const result = await window.Swal?.fire({
-    title: '¿Publicar respuesta?',
-    text: 'Será visible en internet',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#10b981'
-  })
+  const result = await window.Swal?.fire({ title: '¿Publicar respuesta?', text: 'Será visible en internet', icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981' })
   if (!result?.isConfirmed) return
   try {
-    await apiClient.post('update_review', {
-      fila: selectedReview.value.fila,
-      estado: 'Aprobado',
-      respuesta: replyText.value
-    })
+    await apiClient.post('update_review', { fila: selectedReview.value.fila, estado: 'Aprobado', respuesta: replyText.value })
     selectedReview.value.estado = 'Aprobado'
     selectedReview.value.respuesta = replyText.value
     showManageModal.value = false
-    window.Swal?.fire({
-      icon: 'success',
-      title: 'Publicado',
-      toast: true,
-      position: 'top-end',
-      timer: 2000,
-      showConfirmButton: false
-    })
-  } catch (e) {
-    window.Swal?.fire('Error', e.message, 'error')
-  }
+    window.Swal?.fire({ icon: 'success', title: 'Publicado', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false })
+  } catch (e) { window.Swal?.fire('Error', e.message, 'error') }
 }
 
 async function handleArchive(item) {
-  const result = await window.Swal?.fire({
-    title: '¿Archivar esta reseña?',
-    text: 'Se ocultará públicamente',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#ef4444'
-  })
+  const result = await window.Swal?.fire({ title: '¿Archivar esta reseña?', text: 'Se ocultará públicamente', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444' })
   if (!result?.isConfirmed) return
   try {
     await apiClient.post('update_review', { fila: item.fila, estado: 'Archivado' })
@@ -130,26 +99,50 @@ async function callGeminiAI() {
   if (!replyText.value) replyText.value = 'Agradece cordialmente la reseña.'
   isAILoading.value = true
   try {
-    const res = await apiClient.post('call_ai', {
-      prompt: `Actúa como RP. Cliente dijo: "${selectedReview.value.comentario}". Borrador: "${replyText.value}". Mejora y devuelve SOLO respuesta.`
-    })
+    const res = await apiClient.post('call_ai', { prompt: `Actúa como RP. Cliente dijo: "${selectedReview.value.comentario}". Borrador: "${replyText.value}". Mejora y devuelve SOLO respuesta.` })
     replyText.value = res.texto
-  } catch (e) {
-    window.Swal?.fire('Error de IA', e.message, 'error')
-  } finally {
-    isAILoading.value = false
-  }
+  } catch (e) { window.Swal?.fire('Error de IA', e.message, 'error') } 
+  finally { isAILoading.value = false }
 }
 
 function onGenerateSuccess() {
   if (activeSubTab.value === 'por_evaluar') fetchTracks()
 }
 
-function sendWhatsAppReminder(item) {
-  if (!item.url) return
-  const text = encodeURIComponent(
-    `Hola ${item.cliente}. ¿Qué te pareció nuestro servicio? Ayúdanos con tu opinión aquí: ${item.url}`
-  )
+async function revokeLink() {
+  if (!hasPermission('editar_resena')) return
+  const result = await window.Swal?.fire({ title: '¿Revocar enlace?', text: `Se inhabilitará el token de ${selectedToken.value.cliente}`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444' })
+  if (!result?.isConfirmed) return
+  try {
+    await apiClient.post('revoke_link', { fila: selectedToken.value.fila })
+    
+    // Actualizar datos locales
+    const tokenIndex = tokens.value.findIndex(t => t.fila === selectedToken.value.fila)
+    if (tokenIndex !== -1) tokens.value[tokenIndex].estado = 'Revocado'
+    selectedToken.value.estado = 'Revocado'
+
+    showTokenManageModal.value = false
+    window.Swal?.fire({ icon: 'success', title: 'Enlace revocado', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false })
+  } catch (e) { window.Swal?.fire('Error', e.message, 'error') }
+}
+
+// Funciones de Compartir (API Nativa)
+async function shareTokenSystem() {
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Evalúa nuestro servicio',
+        text: `Hola ${selectedToken.value.cliente}, por favor ayúdanos evaluando nuestro servicio:`,
+        url: selectedToken.value.link
+      })
+    } catch (err) { console.log('Compartir cancelado', err) }
+  } else {
+    copyToClipboard(selectedToken.value.link)
+  }
+}
+
+function sendTokenWhatsApp() {
+  const text = encodeURIComponent(`Hola ${selectedToken.value.cliente}. Gracias por confiar en nosotros para: ${selectedToken.value.servicio || 'el servicio'}. ¿Podrías apoyarnos con una breve calificación aquí? ${selectedToken.value.link}`)
   window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
 }
 
@@ -218,8 +211,11 @@ async function revokeTrack(item) {
       </button>
     </div>
 
+    <!-- ÁREA DE TABLAS -->
     <div class="flex-1 overflow-hidden flex flex-col relative">
       <Transition name="fade" mode="out-in">
+        
+        <!-- PESTAÑA: RECIBIDAS -->
         <div v-if="activeSubTab === 'recibidas'" class="absolute inset-0 flex flex-col">
           <SkeletonBlock v-if="isLoading" variant="table" :rows="8" />
           <DataTable
@@ -242,9 +238,20 @@ async function revokeTrack(item) {
                 <span class="hidden sm:inline ml-1">Pedir Reseña</span>
               </BaseButton>
             </template>
+            <template #cell-calificacion="{ item }"><BaseStarRating :score="Number(item.calificacion)" /></template>
+            <template #cell-comentario="{ item }"><div class="max-w-[120px] 2xl:max-w-[200px] truncate text-slate-700 dark:text-slate-300">{{ item.comentario }}</div></template>
+            <template #cell-legalOk="{ item }"><div class="text-center"><i v-if="item.legalOk" class="fas fa-check-circle text-emerald-500"></i><i v-else class="fas fa-minus text-slate-300"></i></div></template>
+            <template #cell-respuesta="{ item }"><div v-if="item.respuesta" class="max-w-[120px] 2xl:max-w-[200px] truncate text-slate-700 dark:text-slate-300">{{ item.respuesta }}</div><span v-else class="text-slate-400 italic text-[11px]">Sin respuesta</span></template>
+            <template #cell-estado="{ item }"><StatusBadge :status="item.estado" /></template>
+          </DataTable>
+        </div>
 
-            <template #cell-calificacion="{ item }">
-              <BaseStarRating :score="Number(item.calificacion)" />
+        <!-- PESTAÑA: ENLACES GENERADOS -->
+        <div v-else-if="activeSubTab === 'enlaces'" class="absolute inset-0 flex flex-col">
+          <SkeletonBlock v-if="isLoading" variant="tokens" :rows="8" />
+          <DataTable v-else @row-click="handleRowClick" :mobile-preview-count="2" :columns="tokenColumns" :data="tokens" search-placeholder="Buscar cliente..." :filter-options="['Activo', 'Usado', 'Expirado', 'Revocado']" filter-column-key="estado">
+            <template #header-actions>
+              <BaseButton v-if="hasPermission('generar_enlace')" icon="fas fa-plus" @click="modalGenerarRef.open()">Generar Enlace</BaseButton>
             </template>
 
             <template #cell-comentario="{ item }">
@@ -330,25 +337,14 @@ async function revokeTrack(item) {
     <!-- Manage-review modal (extract to GestionResenaModal in a later authorized step) -->
     <BaseModal v-model="showManageModal" title="Gestión de Reseña" max-width="max-w-xl">
       <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cliente</label>
-      <p class="text-sm font-semibold text-slate-800 dark:text-white mb-3">
-        {{ selectedReview?.cliente }}
-      </p>
+      <p class="text-sm font-semibold text-slate-800 dark:text-white mb-3">{{ selectedReview?.cliente }}</p>
       <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Comentario</label>
-      <p class="text-sm text-slate-600 dark:text-slate-300 mb-4 whitespace-pre-wrap">
-        {{ selectedReview?.comentario }}
-      </p>
+      <p class="text-sm text-slate-600 dark:text-slate-300 mb-4 whitespace-pre-wrap">{{ selectedReview?.comentario }}</p>
       <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Respuesta pública</label>
-      <textarea
-        v-model="replyText"
-        rows="4"
-        class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-sm"
-        placeholder="Escribe o genera con IA..."
-      />
+      <textarea v-model="replyText" rows="4" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-sm" placeholder="Escribe o genera con IA..." />
       <template #footer>
         <BaseButton variant="outline" @click="handleArchive(selectedReview)">Archivar</BaseButton>
-        <BaseButton variant="outline" :is-loading="isAILoading" icon="fas fa-magic" @click="callGeminiAI">
-          IA
-        </BaseButton>
+        <BaseButton variant="outline" :is-loading="isAILoading" icon="fas fa-magic" @click="callGeminiAI">IA</BaseButton>
         <BaseButton icon="fas fa-check" @click="saveApproval">Publicar</BaseButton>
       </template>
     </BaseModal>
@@ -358,12 +354,6 @@ async function revokeTrack(item) {
 </template>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

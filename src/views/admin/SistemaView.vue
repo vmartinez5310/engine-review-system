@@ -2,11 +2,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { apiClient } from '../../services/api'
 import { hasPermission } from '../../composables/useAuth'
+import SkeletonBlock from '../../components/ui/SkeletonBlock.vue'
 
-const activeTab = ref('tokens')
 const isLoading = ref(true)
 const isSaving = ref(false)
-const tokens = ref([])
 
 const form = ref({
   Empresa_Nombre: '',
@@ -15,15 +14,6 @@ const form = ref({
   Logo_Vertical: '',
   URL_Frontend_App: ''
 })
-
-const tokenColumns = [
-  { key: 'fecha', label: 'Fecha', required: true },
-  { key: 'cliente', label: 'Cliente', required: true },
-  { key: 'servicio', label: 'Servicio/Zona' },
-  { key: 'asesor', label: 'Asesor' },
-  { key: 'estado', label: 'Estado', required: true },
-  { key: 'id', label: 'ID' }
-]
 
 const previewH = computed(() => {
   const u = (form.value.Logo_Horizontal || '').trim()
@@ -34,17 +24,6 @@ const previewV = computed(() => {
   const u = (form.value.Logo_Vertical || '').trim()
   return /^https?:\/\//i.test(u) ? u : null
 })
-
-async function loadTokens() {
-  isLoading.value = true
-  try {
-    tokens.value = await apiClient.post('get_tokens')
-  } catch (e) {
-    window.Swal?.fire('Error', e.message, 'error')
-  } finally {
-    isLoading.value = false
-  }
-}
 
 async function loadConfig() {
   isLoading.value = true
@@ -64,13 +43,7 @@ async function loadConfig() {
   }
 }
 
-async function loadTab(tab) {
-  activeTab.value = tab
-  if (tab === 'tokens') await loadTokens()
-  else await loadConfig()
-}
-
-onMounted(() => loadTokens())
+onMounted(loadConfig)
 
 async function saveConfig() {
   if (!hasPermission('configurar_sistema')) return
@@ -78,43 +51,11 @@ async function saveConfig() {
   try {
     await apiClient.post('update_config', { configuracion: form.value })
     document.documentElement.style.setProperty('--brand-color', form.value.Color_Primario)
-    window.Swal?.fire({
-      icon: 'success',
-      title: 'Configuración guardada',
-      toast: true,
-      position: 'top-end',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    window.Swal?.fire({ icon: 'success', title: 'Configuración guardada', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false })
   } catch (e) {
     window.Swal?.fire('Error', e.message, 'error')
   } finally {
     isSaving.value = false
-  }
-}
-
-async function revokeToken(row) {
-  const result = await window.Swal?.fire({
-    title: '¿Revocar enlace?',
-    text: row.cliente || row.id,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#ef4444'
-  })
-  if (!result?.isConfirmed) return
-  try {
-    await apiClient.post('revoke_link', { fila: row.fila })
-    row.estado = 'Revocado'
-    window.Swal?.fire({
-      icon: 'success',
-      title: 'Enlace revocado',
-      toast: true,
-      position: 'top-end',
-      timer: 1500,
-      showConfirmButton: false
-    })
-  } catch (e) {
-    window.Swal?.fire('Error', e.message, 'error')
   }
 }
 </script>
@@ -273,6 +214,7 @@ async function revokeToken(row) {
           </BaseButton>
         </div>
       </div>
+
     </div>
   </div>
 </template>
