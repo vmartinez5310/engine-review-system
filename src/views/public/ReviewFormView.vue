@@ -92,6 +92,10 @@ async function enviar() {
   errorMsg.value = ''
   try {
     const recaptcha_token = await getRecaptchaToken()
+    if (!recaptcha_token) {
+      errorMsg.value = 'No se pudo verificar seguridad (reCAPTCHA). Desactiva bloqueadores e intenta de nuevo.'
+      return
+    }
     await apiClient.post('submit_review', {
       token_id: tokenId.value,
       nombre_publico: nombre.value.trim(),

@@ -45,14 +45,14 @@ onMounted(async () => {
     }
     document.documentElement.style.setProperty('--brand-color', appConfig.value.color)
 
-    // AQUI ESTÁ LA MAGIA: Inyectar reCAPTCHA Enterprise dinámicamente y ESPERAR a que cargue
+    // Single Enterprise load with site key (required for score-based execute)
     if (appConfig.value.recaptchaSiteKey && isPublicReview.value) {
       await new Promise((resolve) => {
         const s = document.createElement('script')
         s.src = `https://www.google.com/recaptcha/enterprise.js?render=${appConfig.value.recaptchaSiteKey}`
         s.async = true
-        s.onload = resolve  // Vue esperará aquí hasta que Google responda
-        s.onerror = resolve // Si falla (ej. AdBlocker), avanza para no congelar la pantalla de carga
+        s.onload = resolve
+        s.onerror = resolve
         document.head.appendChild(s)
       })
     }
