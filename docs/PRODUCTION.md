@@ -73,7 +73,7 @@ In repo Settings → Pages → Source: `gh-pages` / root.
 
 Live URL: `https://vmartinez5310.github.io/engine-review-system/`
 
-## 3. Embed dashboard on Easy Broker white page
+## 3. Embed dashboard on white page
 
 ### A. Public reviews carousel (lightweight)
 
