@@ -1,0 +1,64 @@
+// Conceptual schema aligned to Google Sheets snapshot
+// Physical store: one Sheet per Table; headers = column names
+
+Enum EstadoUsuarioEnum {
+  Activo
+  Pendiente
+  Suspendido
+}
+
+Enum RolUsuarioEnum {
+  ADMINISTRADOR
+  SUPERVISOR
+  APROBADOR
+  USUARIO
+}
+
+Enum EstadoTokenEnum {
+  Activo
+  Usado
+  Cancelado
+}
+
+Enum EstadoResenaEnum {
+  Pendiente
+  Aprobado
+  Archivado
+}
+
+Table Whitelist {
+  UserId string [pk]
+  Nombre string [not null]
+  Email string [unique, not null]
+  Estado EstadoUsuarioEnum [not null]
+  Rol RolUsuarioEnum [not null]
+  Logo string [note: 'Optional public image URL']
+}
+
+Table Tokens {
+  ID_Enlace string [pk, note: 'LNK-XXXXXX']
+  UserId_Admin string [not null, ref: > Whitelist.UserId]
+  Fecha_Envio date [not null]
+  Nombre_Cliente string [not null]
+  Zona_Servicio string
+  URL_Generada string [not null]
+  Estado EstadoTokenEnum [not null]
+}
+
+Table Resenas {
+  ID_Resena string [pk, note: 'RES-XXXXXXXX']
+  UserId string [not null, note: 'Whitelist.UserId or WEB']
+  Fecha date [not null]
+  Cliente string [not null]
+  Servicio string
+  Calificacion number [not null, note: '0-5']
+  Comentario text
+  Legal_OK boolean [not null]
+  Estado EstadoResenaEnum [not null]
+  Respuesta_Admin text
+}
+
+Table Configuracion {
+  Clave string [pk, note: 'Empresa_Nombre | Color_Primario | Logo_Horizontal | Logo_Vertical | URL_Frontend_App']
+  Valor string
+}

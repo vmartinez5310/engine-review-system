@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Engine Review System API
+  description: |
+    API headless sobre Google Apps Script Web App.
+    Todas las operaciones mutables/lecturas de negocio usan **POST** al endpoint `/exec`
+    con cuerpo JSON `{ "action", "payload", "token" }`.
+    `doGet` solo expone health/version.
+  version: "2.1"
+servers:
+  - url: https://script.google.com/macros/s/{DEPLOYMENT_ID}/exec
+    description: GAS Web App deployment
+paths:
+  /:
+    get:
+      summary: Health check
+      operationId: doGet
+      responses:
+        "200":
+          description: API online
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  message: { type: string }
+                  version: { type: string, example: "2.1" }
+    post:
+      summary: Action router (doPost)
+      operationId: doPost
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              $ref: "#/components/schemas/ActionRequest"
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionRequest"
+      responses:
+        "200":
+          description: Unified envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - $ref: "#/components/schemas/ErrorEnvelope"
+
+components:
+  schemas:
+    ActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum:
+            - get_public_config
+            - get_public_reviews
+            - submit_review
+            - request_otp
+            - verify_otp
+            - get_user_info
+            - get_dashboard_reviews
+            - update_review
+            - generate_link
+            - get_tracking
+            - revoke_link
+            - get_users
+            - add_user
+            - update_user
+            - update_config
+            - call_ai
+        payload:
+          type: object
+          additionalProperties: true
+        token:
+          type: string
+          nullable: true
+          description: JWT de sesión (endpoints privados)
+    SuccessEnvelope:
+      type: object
+      properties:
+        status: { type: string, enum: [success] }
+        data: {}
+    ErrorEnvelope:
+      type: object
+      properties:
+        status: { type: string, enum: [error] }
+        message: { type: string }
+
+  x-actions:
+    public:
+      - get_public_config
+      - get_public_reviews
+      - submit_review
+      - request_otp
+      - verify_otp
+    private:
+      get_user_info: ver_dashboard
+      get_dashboard_reviews: ver_dashboard
+      update_review: editar_resena
+      generate_link: generar_enlace
+      get_tracking: ver_seguimientos
+      revoke_link: editar_resena
+      get_users: gestionar_usuarios
+      add_user: gestionar_usuarios
+      update_user: gestionar_usuarios
+      update_config: configurar_sistema
+      call_ai: editar_resena
