@@ -45,6 +45,18 @@ onMounted(async () => {
     }
     document.documentElement.style.setProperty('--brand-color', appConfig.value.color)
 
+    // AQUI ESTÁ LA MAGIA: Inyectar reCAPTCHA Enterprise dinámicamente y ESPERAR a que cargue
+    if (appConfig.value.recaptchaSiteKey && isPublicReview.value) {
+      await new Promise((resolve) => {
+        const s = document.createElement('script')
+        s.src = `https://www.google.com/recaptcha/enterprise.js?render=${appConfig.value.recaptchaSiteKey}`
+        s.async = true
+        s.onload = resolve  // Vue esperará aquí hasta que Google responda
+        s.onerror = resolve // Si falla (ej. AdBlocker), avanza para no congelar la pantalla de carga
+        document.head.appendChild(s)
+      })
+    }
+
     if (!isPublicReview.value && !isReviewsWidget.value) {
       await fetchUserInfo()
     }
@@ -73,6 +85,7 @@ function handleLogout() {
   setTimeout(authLogout, 400)
 }
 </script>
+
 
 <template>
   <Transition name="fade">
