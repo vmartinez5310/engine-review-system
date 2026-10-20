@@ -22,6 +22,48 @@ const inviteToken = ref('')
 const isPublicReview = ref(false)
 const isReviewsWidget = ref(false)
 
+function loadRecaptchaEnterprise(siteKey) {
+  if (window.grecaptcha?.enterprise) {
+    return new Promise((resolve) => {
+      window.grecaptcha.enterprise.ready(() => {
+        window.__recaptchaReady = true
+        resolve(true)
+      })
+    })
+  }
+  return new Promise((resolve) => {
+    const existing = document.querySelector('script[data-recaptcha-enterprise]')
+    if (existing) {
+      existing.addEventListener('load', () => {
+        window.grecaptcha?.enterprise?.ready(() => {
+          window.__recaptchaReady = true
+          resolve(true)
+        })
+      })
+      existing.addEventListener('error', () => resolve(false))
+      return
+    }
+    const s = document.createElement('script')
+    s.src = `https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(siteKey)}`
+    s.async = true
+    s.defer = true
+    s.dataset.recaptchaEnterprise = '1'
+    s.onload = () => {
+      const ent = window.grecaptcha?.enterprise
+      if (!ent) {
+        resolve(false)
+        return
+      }
+      ent.ready(() => {
+        window.__recaptchaReady = true
+        resolve(true)
+      })
+    }
+    s.onerror = () => resolve(false)
+    document.head.appendChild(s)
+  })
+}
+
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
   const t = params.get('t') || ''
@@ -45,16 +87,8 @@ onMounted(async () => {
     }
     document.documentElement.style.setProperty('--brand-color', appConfig.value.color)
 
-    // Single Enterprise load with site key (required for score-based execute)
     if (appConfig.value.recaptchaSiteKey && isPublicReview.value) {
-      await new Promise((resolve) => {
-        const s = document.createElement('script')
-        s.src = `https://www.google.com/recaptcha/enterprise.js?render=${appConfig.value.recaptchaSiteKey}`
-        s.async = true
-        s.onload = resolve
-        s.onerror = resolve
-        document.head.appendChild(s)
-      })
+      await loadRecaptchaEnterprise(appConfig.value.recaptchaSiteKey)
     }
 
     if (!isPublicReview.value && !isReviewsWidget.value) {

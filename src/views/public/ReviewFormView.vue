@@ -57,15 +57,47 @@ onMounted(async () => {
   }
 })
 
+function waitForEnterprise(maxMs = 8000) {
+  return new Promise((resolve) => {
+    const start = Date.now()
+    const tick = () => {
+      const ent = window.grecaptcha?.enterprise
+      if (ent) {
+        ent.ready(() => resolve(ent))
+        return
+      }
+      if (Date.now() - start >= maxMs) {
+        resolve(null)
+        return
+      }
+      setTimeout(tick, 150)
+    }
+    tick()
+  })
+}
+
 async function getRecaptchaToken() {
   const siteKey = recaptchaSiteKey.value
-  if (!siteKey) return ''
+  if (!siteKey) {
+    console.warn('[reCAPTCHA] site key empty')
+    return ''
+  }
 
-  const enterprise = window.grecaptcha?.enterprise
-  if (!enterprise) return ''
+  let enterprise = window.grecaptcha?.enterprise
+  if (!enterprise) {
+    // Script may still be loading (App.vue injects it)
+    enterprise = await waitForEnterprise(8000)
+  }
+  if (!enterprise) {
+    console.warn('[reCAPTCHA] grecaptcha.enterprise not available (blocked script or domain)')
+    return ''
+  }
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve(''), 4000)
+    const timeout = setTimeout(() => {
+      console.warn('[reCAPTCHA] execute timeout')
+      resolve('')
+    }, 10000)
     try {
       enterprise.ready(() => {
         enterprise
@@ -74,13 +106,15 @@ async function getRecaptchaToken() {
             clearTimeout(timeout)
             resolve(token || '')
           })
-          .catch(() => {
+          .catch((err) => {
             clearTimeout(timeout)
+            console.warn('[reCAPTCHA] execute error', err)
             resolve('')
           })
       })
-    } catch {
+    } catch (err) {
       clearTimeout(timeout)
+      console.warn('[reCAPTCHA] ready error', err)
       resolve('')
     }
   })
@@ -93,7 +127,13 @@ async function enviar() {
   try {
     const recaptcha_token = await getRecaptchaToken()
     if (!recaptcha_token) {
-      errorMsg.value = 'No se pudo verificar seguridad (reCAPTCHA). Desactiva bloqueadores e intenta de nuevo.'
+      const hasKey = !!recaptchaSiteKey.value
+      const hasLib = !!window.grecaptcha?.enterprise
+      errorMsg.value = !hasKey
+        ? 'reCAPTCHA no configurado (falta RECAPTCHA_SITE_KEY en Script Properties).'
+        : !hasLib
+          ? 'No se pudo cargar reCAPTCHA. Desactiva bloqueadores / revisa dominios en Google Cloud (vmartinez5310.github.io + localhost).'
+          : 'No se pudo verificar seguridad (reCAPTCHA). Desactiva bloqueadores e intenta de nuevo.'
       return
     }
     await apiClient.post('submit_review', {
@@ -134,10 +174,16 @@ function starClass(n) {
         <i class="fas fa-link-slash text-xl" />
       </div>
       <h1 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Enlace no disponible</h1>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-        {{ errorMsg || 'Este enlace es inválido, ya fue usado o fue cancelado.' }}
+      <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">
+        Este enlace ya fue usado, expiró o no es válido. Serás redirigido en unos segundos.
       </p>
-      <p class="text-xs text-slate-400">Redirigiendo al sitio…</p>
+      <a
+        v-if="redirectUrl"
+        :href="redirectUrl"
+        class="inline-flex items-center gap-2 text-brand font-semibold text-sm hover:underline"
+      >
+        Ir al inicio <i class="fas fa-arrow-right text-xs" />
+      </a>
     </div>
 
     <div
@@ -148,25 +194,25 @@ function starClass(n) {
         <i class="fas fa-check text-xl" />
       </div>
       <h1 class="text-xl font-bold text-slate-800 dark:text-white mb-2">¡Gracias por tu reseña!</h1>
-      <p class="text-sm text-slate-500 dark:text-slate-400">
-        La recibimos correctamente. El equipo la revisará antes de publicarla.
+      <p class="text-slate-500 dark:text-slate-400 text-sm">
+        Tu opinión nos ayuda a mejorar. Pronto será publicada.
       </p>
     </div>
 
     <form
       v-else
-      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 space-y-5"
+      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 sm:p-8 space-y-5"
       @submit.prevent="enviar"
     >
       <div class="text-center mb-2">
         <img
-          v-if="config?.logoV || config?.logoH"
-          :src="config.logoV || config.logoH"
-          class="h-12 mx-auto mb-4 object-contain"
+          v-if="props.config?.logoV || props.config?.logoH"
+          :src="props.config.logoV || props.config.logoH"
           alt="Logo"
+          class="h-12 mx-auto mb-3 object-contain"
         />
         <h1 class="text-xl font-bold text-slate-800 dark:text-white">Comparte tu experiencia</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ config?.nombre || 'Reseña' }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ props.config?.nombre || 'Inmobiliarte' }}</p>
       </div>
 
       <div>
@@ -175,9 +221,10 @@ function starClass(n) {
           v-model="nombre"
           type="text"
           required
-          maxlength="150"
+          minlength="2"
+          maxlength="80"
           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white"
-          placeholder="Cómo quieres aparecer"
+          placeholder="Tu nombre"
         />
       </div>
 
