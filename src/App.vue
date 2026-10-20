@@ -45,6 +45,18 @@ onMounted(async () => {
     }
     document.documentElement.style.setProperty('--brand-color', appConfig.value.color)
 
+    // Single Enterprise load with site key (required for score-based execute)
+    if (appConfig.value.recaptchaSiteKey && isPublicReview.value) {
+      await new Promise((resolve) => {
+        const s = document.createElement('script')
+        s.src = `https://www.google.com/recaptcha/enterprise.js?render=${appConfig.value.recaptchaSiteKey}`
+        s.async = true
+        s.onload = resolve
+        s.onerror = resolve
+        document.head.appendChild(s)
+      })
+    }
+
     if (!isPublicReview.value && !isReviewsWidget.value) {
       await fetchUserInfo()
     }
