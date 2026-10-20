@@ -58,14 +58,31 @@ onMounted(async () => {
 })
 
 async function getRecaptchaToken() {
-  if (!recaptchaSiteKey.value || typeof window.grecaptcha === 'undefined') return ''
+  const siteKey = recaptchaSiteKey.value
+  if (!siteKey) return ''
+
+  const enterprise = window.grecaptcha?.enterprise
+  if (!enterprise) return ''
+
   return new Promise((resolve) => {
-    window.grecaptcha.ready(() => {
-      window.grecaptcha
-        .execute(recaptchaSiteKey.value, { action: 'submit' })
-        .then(resolve)
-        .catch(() => resolve(''))
-    })
+    const timeout = setTimeout(() => resolve(''), 4000)
+    try {
+      enterprise.ready(() => {
+        enterprise
+          .execute(siteKey, { action: 'submit' })
+          .then((token) => {
+            clearTimeout(timeout)
+            resolve(token || '')
+          })
+          .catch(() => {
+            clearTimeout(timeout)
+            resolve('')
+          })
+      })
+    } catch {
+      clearTimeout(timeout)
+      resolve('')
+    }
   })
 }
 

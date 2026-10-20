@@ -45,13 +45,6 @@ onMounted(async () => {
     }
     document.documentElement.style.setProperty('--brand-color', appConfig.value.color)
 
-    if (appConfig.value.recaptchaSiteKey && isPublicReview.value) {
-      const s = document.createElement('script')
-      s.src = `https://www.google.com/recaptcha/api.js?render=${appConfig.value.recaptchaSiteKey}`
-      s.async = true
-      document.head.appendChild(s)
-    }
-
     if (!isPublicReview.value && !isReviewsWidget.value) {
       await fetchUserInfo()
     }
