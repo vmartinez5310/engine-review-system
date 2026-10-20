@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import LoginView from './views/auth/LoginView.vue'
 import DashboardLayout from './components/layout/DashboardLayout.vue'
 import ReviewFormView from './views/public/ReviewFormView.vue'
+import PublicReviewsCarousel from './views/public/PublicReviewsCarousel.vue'
 import { apiClient } from './services/api'
 import { authState, fetchUserInfo, logout as authLogout } from './composables/useAuth'
 
@@ -19,6 +20,7 @@ const appConfig = ref({
 
 const inviteToken = ref('')
 const isPublicReview = ref(false)
+const isReviewsWidget = ref(false)
 
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
@@ -26,6 +28,9 @@ onMounted(async () => {
   if (t) {
     inviteToken.value = t
     isPublicReview.value = true
+  }
+  if (params.get('widget') === 'reviews') {
+    isReviewsWidget.value = true
   }
 
   try {
@@ -47,7 +52,7 @@ onMounted(async () => {
       document.head.appendChild(s)
     }
 
-    if (!isPublicReview.value) {
+    if (!isPublicReview.value && !isReviewsWidget.value) {
       await fetchUserInfo()
     }
   } catch (e) {
@@ -90,8 +95,14 @@ function handleLogout() {
   </Transition>
 
   <div v-show="!isAppLoading" class="min-h-screen w-full relative">
+    <div
+      v-if="isReviewsWidget"
+      class="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-300"
+    >
+      <PublicReviewsCarousel :config="appConfig" />
+    </div>
     <ReviewFormView
-      v-if="isPublicReview"
+      v-else-if="isPublicReview"
       :invite-token="inviteToken"
       :config="appConfig"
     />

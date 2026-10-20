@@ -46,7 +46,7 @@ watch(
 
 const modalTitle = computed(() => {
   if (!generatedResult.value) return 'Nuevo Enlace de Reseña'
-  return generatedResult.value.id ? `Pase ${generatedResult.value.id}` : 'Pase de Evaluación'
+  return generatedResult.value.id ? `Enlace ${generatedResult.value.id}` : 'Enlace de Evaluación'
 })
 
 function close() {
@@ -172,103 +172,100 @@ function sendWhatsAppLink() {
       </p>
     </form>
 
-    <!-- MODO 2: PASE DIGITAL EJECUTIVO (COMPACTO Y ADAPTABLE A CUALQUIER PANTALLA) -->
-    <div v-else class="flex flex-col items-center animate-fadeIn w-full space-y-3.5 select-none">
-      
-      <!-- Tarjeta del Ticket -->
-      <div class="w-full rounded-2xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-inner">
-        
-        <!-- Área superior: QR interactivo + Resumen del cliente -->
-        <div class="p-4 flex flex-col items-center text-center relative">
-          <button
-            type="button"
-            title="Haz clic para copiar el enlace"
-            class="group relative p-2.5 bg-white rounded-2xl shadow-md border border-slate-200/60 transition-transform active:scale-95 cursor-pointer"
-            @click="copyToClipboard(generatedResult.link)"
-          >
-            <img
-              v-if="generatedResult.qrUrl"
-              :src="generatedResult.qrUrl"
-              alt="QR Code"
-              class="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded-lg"
-            />
-            <div class="absolute inset-0 rounded-2xl bg-slate-900/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-semibold gap-1">
-              <i class="fas fa-copy text-sky-400 text-base"></i>
-              <span>Copiar link</span>
-            </div>
-          </button>
+    <!-- MODO 2: ENLACE DIGITAL EJECUTIVO (MINIMALISTA & PREMIUM BANK) -->
+<div v-else class="flex flex-col items-center animate-fadeIn w-full space-y-4 select-none">
+  
+  <!-- Tarjeta Premium Unificada -->
+  <div class="w-full rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 dark:from-slate-950 dark:to-black border border-slate-800 p-5 shadow-2xl relative overflow-hidden">
+    
+    <!-- Sutil reflejo premium en la esquina superior -->
+    <div class="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-2.5">
-            Escanea con la cámara o toca el QR para copiar el enlace
-          </p>
+    <!-- Área del QR Code -->
+    <div class="flex flex-col items-center text-center pb-5 border-b border-slate-800/60">
+      <button
+        type="button"
+        title="Haz clic para copiar el enlace"
+        class="group relative p-3 bg-slate-900 rounded-2xl shadow-xl border border-slate-800 transition-all hover:border-sky-500/30 active:scale-95 cursor-pointer"
+        @click="copyToClipboard(generatedResult.link)"
+      >
+        <img
+          v-if="generatedResult.qrUrl"
+          :src="generatedResult.qrUrl"
+          alt="QR Code"
+          class="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded-xl contrast-105"
+        />
+        <div class="absolute inset-0 rounded-2xl bg-slate-950/85 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-medium gap-1.5">
+          <i class="fas fa-copy text-sky-400 text-sm"></i>
+          <span>Copiar enlace</span>
         </div>
+      </button>
 
-        <!-- Divisor perforado estilo Ticket -->
-        <div class="relative flex items-center justify-center h-4">
-          <div class="absolute -left-2.5 w-5 h-5 bg-white dark:bg-slate-900 rounded-full border-r border-slate-200 dark:border-slate-800"></div>
-          <div class="w-full border-t border-dashed border-slate-200 dark:border-slate-800 mx-4"></div>
-          <div class="absolute -right-2.5 w-5 h-5 bg-white dark:bg-slate-900 rounded-full border-l border-slate-200 dark:border-slate-800"></div>
-        </div>
+      <p class="text-[11px] text-slate-500 tracking-wide mt-3">
+        Escanea con la cámara o toca el QR para copiar el enlace
+      </p>
+    </div>
 
-        <!-- Metadatos en Grid 2x2 (Ahorra espacio vertical) -->
-        <div class="px-4 pb-3.5 pt-1 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-          <div class="min-w-0">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">Cliente</span>
-            <span class="font-bold text-slate-800 dark:text-slate-100 truncate block">{{ generatedResult.cliente }}</span>
-          </div>
-
-          <div class="min-w-0">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">Servicio</span>
-            <span class="font-medium text-slate-700 dark:text-slate-300 truncate block">{{ generatedResult.servicio }}</span>
-          </div>
-
-          <div v-if="generatedResult.asesor" class="min-w-0">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">Asesor</span>
-            <span class="font-medium text-slate-600 dark:text-slate-400 truncate block">{{ generatedResult.asesor }}</span>
-          </div>
-
-          <div class="min-w-0">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">Emisión</span>
-            <span class="font-mono text-slate-600 dark:text-slate-400 truncate block">{{ generatedResult.fecha }}</span>
-          </div>
-        </div>
+    <!-- Metadatos Financieros / Ejecutivos (Grid Limpio) -->
+    <div class="pt-4 grid grid-cols-2 gap-x-6 gap-y-3.5 text-xs">
+      <div class="min-w-0">
+        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Cliente</span>
+        <span class="font-semibold text-slate-200 truncate block">{{ generatedResult.cliente }}</span>
       </div>
 
-      <!-- Barra de Acciones Directas (Fricción Cero) -->
-      <div v-if="generatedResult.estado === 'Activo'" class="w-full grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 transition-all active:scale-95 cursor-pointer"
-          @click="sendWhatsAppLink"
-        >
-          <i class="fab fa-whatsapp text-sm"></i>
-          <span>WhatsApp</span>
-        </button>
+      <div class="min-w-0">
+        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Servicio</span>
+        <span class="font-medium text-slate-300 truncate block">{{ generatedResult.servicio }}</span>
+      </div>
 
-        <button
-          type="button"
-          :class="[
-            'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer',
-            copied
-              ? 'bg-sky-500 text-slate-950 border-sky-400'
-              : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/20'
-          ]"
-          @click="copyToClipboard(generatedResult.link)"
-        >
-          <i :class="copied ? 'fas fa-check text-xs' : 'fas fa-copy text-xs'"></i>
-          <span>{{ copied ? '¡Copiado!' : 'Copiar' }}</span>
-        </button>
+      <div v-if="generatedResult.asesor" class="min-w-0">
+        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Asesor</span>
+        <span class="font-medium text-slate-400 truncate block">{{ generatedResult.asesor }}</span>
+      </div>
 
-        <button
-          type="button"
-          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 transition-all active:scale-95 cursor-pointer"
-          @click="shareLinkSystem"
-        >
-          <i class="fas fa-share-nodes text-xs"></i>
-          <span>Compartir</span>
-        </button>
+      <div class="min-w-0">
+        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Emisión</span>
+        <span class="font-mono text-slate-400 tracking-tight truncate block">{{ generatedResult.fecha }}</span>
       </div>
     </div>
+  </div>
+
+  <!-- Barra de Acciones Directas (Fricción Cero) -->
+  <div v-if="generatedResult.estado === 'Activo'" class="w-full grid grid-cols-3 gap-2">
+    <button
+      type="button"
+      class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 transition-all active:scale-95 cursor-pointer"
+      @click="sendWhatsAppLink"
+    >
+      <i class="fab fa-whatsapp text-sm"></i>
+      <span>WhatsApp</span>
+    </button>
+
+    <button
+      type="button"
+      :class="[
+        'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer',
+        copied
+          ? 'bg-sky-500 text-slate-950 border-sky-400'
+          : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/10'
+      ]"
+      @click="copyToClipboard(generatedResult.link)"
+    >
+      <i :class="copied ? 'fas fa-check text-xs' : 'fas fa-copy text-xs'"></i>
+      <span>{{ copied ? '¡Copiado!' : 'Copiar' }}</span>
+    </button>
+
+    <button
+      type="button"
+      class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all active:scale-95 cursor-pointer"
+      @click="shareLinkSystem"
+    >
+      <i class="fas fa-share-nodes text-xs"></i>
+      <span>Compartir</span>
+    </button>
+  </div>
+</div>
+
 
     <!-- FOOTER CON JERARQUÍA CLARA (Destructivo a la izquierda, Cierre a la derecha) -->
     <template #footer>
