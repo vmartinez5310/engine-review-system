@@ -127,8 +127,7 @@ onMounted(load)
     <!-- HEADER EJECUTIVO -->
     <div class="shrink-0 flex items-center justify-between gap-4 pb-3.5 mb-4 border-b border-slate-200/80 dark:border-slate-800/80">
       <div>
-        <div class="flex items-center gap-2">
-          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <div class="flex items-center gap-2">        
           <span class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
             {{ config?.nombre || 'Sistema de Reseñas' }}
           </span>

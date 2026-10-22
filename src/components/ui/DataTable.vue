@@ -122,7 +122,8 @@ function rowKey(row, index) {
     <div
       class="h-14 px-3 sm:px-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 flex gap-2 items-center z-20"
     >
-      <div class="w-full sm:w-72 shrink-0 min-w-0">
+      <!-- CORRECCIÓN AQUÍ: Se eliminó w-full y shrink-0. Ahora flex-1 ocupa el espacio sobrante y min-w-0 evita desbordamientos -->
+      <div class="flex-1 sm:flex-initial sm:w-72 min-w-0">
         <BaseInput v-model="searchQuery" :placeholder="searchPlaceholder" icon="fas fa-search" />
       </div>
 
