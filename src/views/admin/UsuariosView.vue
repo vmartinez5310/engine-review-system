@@ -2,14 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { apiClient } from '../../services/api'
 import { hasPermission } from '../../composables/useAuth'
-import UsuarioAddModal from './UsuarioAddModal.vue'
-import UsuarioEditModal from './UsuarioEditModal.vue'
+import UsuarioFormModal from './UsuarioFormModal.vue'
 
 const isLoading = ref(true)
 const users = ref([])
-const showAddModal = ref(false)
-const showEditModal = ref(false)
-const editing = ref(null)
+const showFormModal = ref(false)
+const selectedUser = ref(null)
 
 const columns = [
   { key: 'avatar', label: '', required: true },
@@ -32,9 +30,14 @@ async function fetchUsers() {
 
 onMounted(fetchUsers)
 
+function openCreate() {
+  selectedUser.value = null
+  showFormModal.value = true
+}
+
 function openEdit(user) {
-  editing.value = user
-  showEditModal.value = true
+  selectedUser.value = user
+  showFormModal.value = true
 }
 
 async function toggleStatus(user) {
@@ -86,7 +89,7 @@ function initials(name) {
         <BaseButton
           v-if="hasPermission('gestionar_usuarios')"
           icon="fas fa-user-plus"
-          @click="showAddModal = true"
+          @click="openCreate"
         >
           <span class="hidden sm:inline ml-1">Añadir Usuario</span>
         </BaseButton>
@@ -138,7 +141,6 @@ function initials(name) {
       </template>
     </DataTable>
 
-    <UsuarioAddModal v-model="showAddModal" @saved="fetchUsers" />
-    <UsuarioEditModal v-model="showEditModal" :user="editing" @saved="fetchUsers" />
+    <UsuarioFormModal v-model="showFormModal" :user="selectedUser" @saved="fetchUsers" />
   </div>
 </template>
