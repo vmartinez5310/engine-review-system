@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { apiClient } from '../../services/api'
+import { supabase } from '../../services/supabaseClient'
 import { hasPermission } from '../../composables/useAuth'
 import UsuarioFormModal from './UsuarioFormModal.vue'
 
@@ -20,7 +20,13 @@ const columns = [
 async function fetchUsers() {
   isLoading.value = true
   try {
-    users.value = await apiClient.post('get_users')
+    const { data, error } = await supabase
+      .from('whitelist')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    users.value = data || []
   } catch (e) {
     window.Swal?.fire('Error', e.message, 'error')
   } finally {
@@ -51,8 +57,14 @@ async function toggleStatus(user) {
     confirmButtonColor: next === 'Activo' ? '#10b981' : '#ef4444'
   })
   if (!result?.isConfirmed) return
+
   try {
-    await apiClient.post('update_user', { fila: user.fila, estado: next })
+    const { error } = await supabase
+      .from('whitelist')
+      .update({ estado: next, updated_at: new Date().toISOString() })
+      .eq('id', user.id)
+
+    if (error) throw error
     user.estado = next
     window.Swal?.fire({
       icon: 'success',

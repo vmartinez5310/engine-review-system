@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { apiClient } from '../../services/api'
-import { hasPermission } from '../../composables/useAuth'
+import { supabase } from '../../services/supabaseClient'
+import { authState, hasPermission } from '../../composables/useAuth'
 
 const props = defineProps({
   initialToken: { type: Object, default: null }
@@ -24,16 +24,16 @@ watch(
     if (!open) return
     copied.value = false
     if (token) {
-      const link = token.url || token.link || ''
+
+      const link = token.url || token.link || token.url_generada || ''
       generatedResult.value = {
-        id: token.id,
-        fila: token.fila,
+        id: token.id_enlace || token.id,
         estado: token.estado || 'Activo',
         link,
-        cliente: token.cliente,
-        servicio: token.servicio,
-        asesor: token.asesor,
-        fecha: token.fecha,
+        cliente: token.nombre_cliente || token.cliente,
+        servicio: token.zona_servicio || token.servicio,
+        asesor: token.asesor || token.user_id_admin,
+        fecha: token.fecha_envio || token.fecha,
         qrUrl: link ? buildQrUrl(link) : ''
       }
     } else {
@@ -60,33 +60,42 @@ async function generateReviewLink() {
 
   isGenerating.value = true
   try {
-    const response = await apiClient.post('generate_link', {
-      nombre: requestForm.value.cliente.trim(),
-      servicio: requestForm.value.servicio.trim()
+    const linkId = 'LNK-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+    
+    // Obtener URL base de configuración
+    const { data: cfgRow } = await supabase
+      .from('configuracion')
+      .select('valor')
+      .eq('clave', 'URL_Frontend_App')
+      .maybeSingle()
+
+    const baseUrl = cfgRow?.valor || window.location.origin
+    const fullUrl = `${baseUrl.replace(/\/$/, '')}/?t=${linkId}`
+    const userId = authState.user?.userId || 'ADMIN'
+
+    const { error } = await supabase.from('tokens').insert({
+      id_enlace: linkId,
+      user_id_admin: userId,
+      fecha_envio: new Date().toISOString().split('T')[0],
+      nombre_cliente: requestForm.value.cliente.trim(),
+      zona_servicio: requestForm.value.servicio.trim(),
+      url_generada: fullUrl,
+      estado: 'Activo'
     })
 
-    const link = response.url || response.link
-    if (!link) throw new Error('El servidor no devolvió una URL válida')
+    if (error) throw error
 
     generatedResult.value = {
-      id: response.id || 'NUEVO',
+      id: linkId,
       estado: 'Activo',
-      link,
+      link: fullUrl,
       cliente: requestForm.value.cliente.trim(),
       servicio: requestForm.value.servicio.trim(),
-      fecha: new Date().toLocaleDateString('es-MX', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }),
-      qrUrl: buildQrUrl(link)
+      fecha: new Date().toISOString().split('T')[0],
+      qrUrl: buildQrUrl(fullUrl)
     }
 
-    emit('success', {
-      url: link,
-      cliente: requestForm.value.cliente.trim(),
-      servicio: requestForm.value.servicio.trim()
-    })
+    emit('success')
   } catch (e) {
     window.Swal?.fire('Error', e.message || 'No se pudo generar el enlace.', 'error')
   } finally {
@@ -96,46 +105,23 @@ async function generateReviewLink() {
 
 async function copyToClipboard(text) {
   if (!text) return
-  try {
-    await navigator.clipboard.writeText(text)
-    copied.value = true
-    setTimeout(() => {
-      copied.value = false
-    }, 2000)
-    window.Swal?.fire({
-      icon: 'success',
-      title: 'Enlace copiado',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 1400
-    })
-  } catch {
-    /* fallback silencioso */
-  }
-}
-
-async function shareLinkSystem() {
-  if (!generatedResult.value?.link) return
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: 'Evalúa nuestro servicio',
-        text: `Hola ${generatedResult.value.cliente}, por favor ayúdanos evaluando nuestro servicio:`,
-        url: generatedResult.value.link
-      })
-    } catch {
-      /* cancelado por el usuario */
-    }
-  } else {
-    copyToClipboard(generatedResult.value.link)
-  }
+  await navigator.clipboard.writeText(text)
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 2000)
+  window.Swal?.fire({
+    icon: 'success',
+    title: 'Enlace copiado',
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1400
+  })
 }
 
 function sendWhatsAppLink() {
   if (!generatedResult.value?.link) return
   const text = encodeURIComponent(
-    `Hola ${generatedResult.value.cliente}. Gracias por confiar en nosotros para: ${generatedResult.value.servicio || 'nuestro servicio'}. ¿Podrías apoyarnos con una breve calificación aquí? ${generatedResult.value.link}`
+    `Hola ${generatedResult.value.cliente}. ¿Podrías apoyarnos con tu valoración en el siguiente enlace? ${generatedResult.value.link}`
   )
   window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
 }
@@ -153,7 +139,6 @@ function sendWhatsAppLink() {
       <StatusBadge :status="generatedResult.estado" />
     </template>
 
-    <!-- MODO 1: FORMULARIO DE CREACIÓN (CON ENVÍO RÁPIDO CON ENTER) -->
     <form v-if="!generatedResult" class="space-y-4" @submit.prevent="generateReviewLink">
       <BaseInput
         v-model="requestForm.cliente"
@@ -164,151 +149,48 @@ function sendWhatsAppLink() {
       <BaseInput
         v-model="requestForm.servicio"
         label="Servicio / Operación"
-        placeholder="Ej. Compra de Departamento"
+        placeholder="Ej. Asesoría de Inmuebles"
         icon="fas fa-briefcase"
       />
-      <p class="text-[11px] text-slate-400 dark:text-slate-500">
-        Se generará un código QR y un enlace único de un solo uso para este cliente.
-      </p>
     </form>
 
-    <!-- MODO 2: ENLACE DIGITAL EJECUTIVO (MINIMALISTA & PREMIUM BANK) -->
-<div v-else class="flex flex-col items-center animate-fadeIn w-full space-y-4 select-none">
-  
-  <!-- Tarjeta Premium Unificada -->
-  <div class="w-full rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 dark:from-slate-950 dark:to-black border border-slate-800 p-5 shadow-2xl relative overflow-hidden">
-    
-    <!-- Sutil reflejo premium en la esquina superior -->
-    <div class="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
-    <!-- Área del QR Code -->
-    <div class="flex flex-col items-center text-center pb-5 border-b border-slate-800/60">
-      <button
-        type="button"
-        title="Haz clic para copiar el enlace"
-        class="group relative p-3 bg-slate-900 rounded-2xl shadow-xl border border-slate-800 transition-all hover:border-sky-500/30 active:scale-95 cursor-pointer"
-        @click="copyToClipboard(generatedResult.link)"
-      >
+    <div v-else class="flex flex-col items-center w-full space-y-4 select-none">
+      <div class="w-full rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl flex flex-col items-center text-center">
         <img
           v-if="generatedResult.qrUrl"
           :src="generatedResult.qrUrl"
-          alt="QR Code"
-          class="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded-xl contrast-105"
+          alt="QR"
+          class="w-36 h-36 object-contain rounded-xl"
         />
-        <div class="absolute inset-0 rounded-2xl bg-slate-950/85 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-medium gap-1.5">
-          <i class="fas fa-copy text-sky-400 text-sm"></i>
-          <span>Copiar enlace</span>
-        </div>
-      </button>
-
-      <p class="text-[11px] text-slate-500 tracking-wide mt-3">
-        Escanea con la cámara o toca el QR para copiar el enlace
-      </p>
-    </div>
-
-    <!-- Metadatos Financieros / Ejecutivos (Grid Limpio) -->
-    <div class="pt-4 grid grid-cols-2 gap-x-6 gap-y-3.5 text-xs">
-      <div class="min-w-0">
-        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Cliente</span>
-        <span class="font-semibold text-slate-200 truncate block">{{ generatedResult.cliente }}</span>
+        <p class="text-xs text-slate-400 mt-3 font-mono break-all">{{ generatedResult.link }}</p>
       </div>
 
-      <div class="min-w-0">
-        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Servicio</span>
-        <span class="font-medium text-slate-300 truncate block">{{ generatedResult.servicio }}</span>
-      </div>
-
-      <div v-if="generatedResult.asesor" class="min-w-0">
-        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Asesor</span>
-        <span class="font-medium text-slate-400 truncate block">{{ generatedResult.asesor }}</span>
-      </div>
-
-      <div class="min-w-0">
-        <span class="text-[10px] font-medium uppercase tracking-widest text-slate-500 block mb-0.5">Emisión</span>
-        <span class="font-mono text-slate-400 tracking-tight truncate block">{{ generatedResult.fecha }}</span>
+      <div class="w-full grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-pointer"
+          @click="sendWhatsAppLink"
+        >
+          <i class="fab fa-whatsapp"></i> WhatsApp
+        </button>
+        <button
+          type="button"
+          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 cursor-pointer"
+          @click="copyToClipboard(generatedResult.link)"
+        >
+          <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
+          {{ copied ? 'Copiado' : 'Copiar' }}
+        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Barra de Acciones Directas (Fricción Cero) -->
-  <div v-if="generatedResult.estado === 'Activo'" class="w-full grid grid-cols-3 gap-2">
-    <button
-      type="button"
-      class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 transition-all active:scale-95 cursor-pointer"
-      @click="sendWhatsAppLink"
-    >
-      <i class="fab fa-whatsapp text-sm"></i>
-      <span>WhatsApp</span>
-    </button>
-
-    <button
-      type="button"
-      :class="[
-        'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer',
-        copied
-          ? 'bg-sky-500 text-slate-950 border-sky-400'
-          : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/10'
-      ]"
-      @click="copyToClipboard(generatedResult.link)"
-    >
-      <i :class="copied ? 'fas fa-check text-xs' : 'fas fa-copy text-xs'"></i>
-      <span>{{ copied ? '¡Copiado!' : 'Copiar' }}</span>
-    </button>
-
-    <button
-      type="button"
-      class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all active:scale-95 cursor-pointer"
-      @click="shareLinkSystem"
-    >
-      <i class="fas fa-share-nodes text-xs"></i>
-      <span>Compartir</span>
-    </button>
-  </div>
-</div>
-
-
-    <!-- FOOTER CON JERARQUÍA CLARA (Destructivo a la izquierda, Cierre a la derecha) -->
     <template #footer>
-      <template v-if="!generatedResult">
-        <div class="flex items-center justify-end gap-2.5 w-full">
-          <BaseButton variant="outline" @click="close">Cancelar</BaseButton>
-          <BaseButton :is-loading="isGenerating" icon="fas fa-bolt" @click="generateReviewLink">
-            Crear Enlace
-          </BaseButton>
-        </div>
-      </template>
-
-      <template v-else>
-        <div>
-          <button
-            v-if="props.initialToken && generatedResult.estado === 'Activo' && hasPermission('editar_resena')"
-            type="button"
-            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors cursor-pointer"
-            @click="emit('revoke', props.initialToken)"
-          >
-            <i class="fas fa-ban text-[11px]"></i>
-            <span>Revocar enlace</span>
-          </button>
-        </div>
-
+      <div class="flex justify-end gap-2 w-full">
         <BaseButton variant="outline" @click="close">Cerrar</BaseButton>
-      </template>
+        <BaseButton v-if="!generatedResult" :is-loading="isGenerating" @click="generateReviewLink">
+          Crear Enlace
+        </BaseButton>
+      </div>
     </template>
   </BaseModal>
 </template>
-
-<style scoped>
-.animate-fadeIn {
-  animation: fadeIn 0.22s ease-out forwards;
-}
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

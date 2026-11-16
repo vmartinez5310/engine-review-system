@@ -4,14 +4,14 @@ import LoginView from './views/auth/LoginView.vue'
 import DashboardLayout from './components/layout/DashboardLayout.vue'
 import ReviewFormView from './views/public/ReviewFormView.vue'
 import PublicReviewsCarousel from './views/public/PublicReviewsCarousel.vue'
-import { apiClient } from './services/api'
+import { supabase } from './services/supabaseClient'
 import { authState, fetchUserInfo, logout as authLogout } from './composables/useAuth'
 
 const isAppLoading = ref(true)
-const loadingMessage = ref('Estableciendo conexión')
+const loadingMessage = ref('Estableciendo conexión...')
 const appConfig = ref({
-  nombre: '',
-  color: '#334155',
+  nombre: 'Inmobiliarte 22',
+  color: '#4cc3e9',
   logoH: null,
   logoV: null,
   urlFrontend: '',
@@ -21,48 +21,6 @@ const appConfig = ref({
 const inviteToken = ref('')
 const isPublicReview = ref(false)
 const isReviewsWidget = ref(false)
-
-function loadRecaptchaEnterprise(siteKey) {
-  if (window.grecaptcha?.enterprise) {
-    return new Promise((resolve) => {
-      window.grecaptcha.enterprise.ready(() => {
-        window.__recaptchaReady = true
-        resolve(true)
-      })
-    })
-  }
-  return new Promise((resolve) => {
-    const existing = document.querySelector('script[data-recaptcha-enterprise]')
-    if (existing) {
-      existing.addEventListener('load', () => {
-        window.grecaptcha?.enterprise?.ready(() => {
-          window.__recaptchaReady = true
-          resolve(true)
-        })
-      })
-      existing.addEventListener('error', () => resolve(false))
-      return
-    }
-    const s = document.createElement('script')
-    s.src = `https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(siteKey)}`
-    s.async = true
-    s.defer = true
-    s.dataset.recaptchaEnterprise = '1'
-    s.onload = () => {
-      const ent = window.grecaptcha?.enterprise
-      if (!ent) {
-        resolve(false)
-        return
-      }
-      ent.ready(() => {
-        window.__recaptchaReady = true
-        resolve(true)
-      })
-    }
-    s.onerror = () => resolve(false)
-    document.head.appendChild(s)
-  })
-}
 
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
@@ -76,41 +34,35 @@ onMounted(async () => {
   }
 
   try {
-    const cfg = await apiClient.post('get_public_config')
+    const { data } = await supabase.from('configuracion').select('*')
+    const cfgMap = {}
+    ;(data || []).forEach(row => { cfgMap[row.clave] = row.valor })
+
     appConfig.value = {
-      nombre: cfg.nombre || 'Dashboard',
-      color: cfg.color || '#334155',
-      logoH: cfg.logoH,
-      logoV: cfg.logoV,
-      urlFrontend: cfg.urlFrontend || '',
-      recaptchaSiteKey: cfg.recaptchaSiteKey || ''
+      nombre: cfgMap.Empresa_Nombre || 'Inmobiliarte 22',
+      color: cfgMap.Color_Primario || '#4cc3e9',
+      logoH: cfgMap.Logo_Horizontal || null,
+      logoV: cfgMap.Logo_Vertical || null,
+      urlFrontend: cfgMap.URL_Frontend_App || '',
+      recaptchaSiteKey: ''
     }
     document.documentElement.style.setProperty('--brand-color', appConfig.value.color)
-
-    if (appConfig.value.recaptchaSiteKey && isPublicReview.value) {
-      await loadRecaptchaEnterprise(appConfig.value.recaptchaSiteKey)
-    }
 
     if (!isPublicReview.value && !isReviewsWidget.value) {
       await fetchUserInfo()
     }
   } catch (e) {
-    console.error(e)
-    appConfig.value.nombre = 'Sistema de Gestión'
+    console.error('Error cargando configuración inicial:', e)
   } finally {
     isAppLoading.value = false
   }
 })
 
-async function handleLoginSuccess(token) {
+async function handleLoginSuccess() {
   loadingMessage.value = 'Iniciando sesión segura...'
   isAppLoading.value = true
-  localStorage.setItem('inm_dash_token', token)
-  const ok = await fetchUserInfo(token)
+  await fetchUserInfo()
   isAppLoading.value = false
-  if (!ok) {
-    window.Swal?.fire('Error', 'No se pudo iniciar sesión. Verifica tu conexión.', 'error')
-  }
 }
 
 function handleLogout() {
@@ -119,7 +71,6 @@ function handleLogout() {
   setTimeout(authLogout, 400)
 }
 </script>
-
 
 <template>
   <Transition name="fade">

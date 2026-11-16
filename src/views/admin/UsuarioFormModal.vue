@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { apiClient } from '../../services/api'
+import { supabase } from '../../services/supabaseClient'
 
 const isOpen = defineModel({ type: Boolean, default: false })
 const props = defineProps({
@@ -44,7 +44,7 @@ watch(
     if (!open) return
     if (user) {
       form.value = {
-        idUser: user.id || user.UserId || '',
+        idUser: user.user_id || user.id || '',
         nombre: user.nombre || '',
         email: user.email || '',
         rol: (user.rol || 'USUARIO').toUpperCase(),
@@ -77,27 +77,38 @@ async function save() {
   isSaving.value = true
   try {
     if (isEdit.value) {
-      await apiClient.post('update_user', {
-        fila: props.user.fila,
-        nombre: form.value.nombre.trim(),
-        rol: form.value.rol,
-        logo: (form.value.logo || '').trim(),
-        estado: form.value.estado
-      })
+      const { error } = await supabase
+        .from('whitelist')
+        .update({
+          nombre: form.value.nombre.trim(),
+          rol: form.value.rol,
+          logo: (form.value.logo || '').trim(),
+          estado: form.value.estado,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', props.user.id)
+
+      if (error) throw error
     } else {
-      await apiClient.post('add_user', {
-        idUser: form.value.idUser.trim() || ('USR-' + Date.now().toString(36).toUpperCase()),
-        nombre: form.value.nombre.trim(),
-        email: form.value.email.trim(),
-        rol: form.value.rol,
-        logo: (form.value.logo || '').trim()
-      })
+      const generatedUid = form.value.idUser.trim() || ('USR-' + Date.now().toString(36).toUpperCase())
+      const { error } = await supabase
+        .from('whitelist')
+        .insert({
+          user_id: generatedUid,
+          nombre: form.value.nombre.trim(),
+          email: form.value.email.toLowerCase().trim(),
+          rol: form.value.rol,
+          estado: 'Pendiente',
+          logo: (form.value.logo || '').trim()
+        })
+
+      if (error) throw error
     }
 
     isOpen.value = false
     window.Swal?.fire({
       icon: 'success',
-      title: isEdit.value ? 'Usuario actualizado' : 'Usuario añadido',
+      title: isEdit.value ? 'Usuario actualizado' : 'Usuario registrado',
       toast: true,
       position: 'top-end',
       timer: 2000,

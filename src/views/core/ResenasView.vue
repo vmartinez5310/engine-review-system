@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { apiClient } from '../../services/api'
+import { supabase } from '../../services/supabaseClient'
 import { hasPermission } from '../../composables/useAuth'
 import ResenasTable from './ResenasTable.vue'
 import SeguimientosTable from './SeguimientosTable.vue'
@@ -26,9 +26,40 @@ async function fetchData() {
   isLoading.value = true
   try {
     if (activeSubTab.value === 'recibidas') {
-      reviews.value = await apiClient.post('get_dashboard_reviews')
+      const { data, error } = await supabase
+        .from('resenas')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      reviews.value = (data || []).map(r => ({
+        ...r,
+        legalOk: r.legal_ok,
+        respuesta: r.respuesta_admin
+      }))
     } else if (activeSubTab.value === 'por_evaluar') {
-      tokens.value = await apiClient.post('get_tokens')
+      const { data, error } = await supabase
+        .from('tokens')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      const hoy = new Date()
+      tokens.value = (data || []).map(t => {
+        const fechaEnvio = t.fecha_envio ? new Date(t.fecha_envio) : new Date()
+        const dias = Math.floor(Math.abs(hoy - fechaEnvio) / 864e5)
+        return {
+          id: t.id_enlace,
+          fecha: t.fecha_envio,
+          cliente: t.nombre_cliente,
+          servicio: t.zona_servicio,
+          dias,
+          asesor: t.user_id_admin,
+          estado: t.estado === 'Activo' && dias > 7 ? 'Expirado' : t.estado,
+          url_generada: t.url_generada,
+          rawId: t.id
+        }
+      })
     }
   } catch (e) {
     window.Swal?.fire('Error', e.message, 'error')
@@ -39,20 +70,8 @@ async function fetchData() {
 
 onMounted(() => {
   let targetSub = props.initialSubTab
-  if (!targetSub) {
-    const params = new URLSearchParams(window.location.search)
-    targetSub = params.get('subtab')
-    if (targetSub) {
-      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname
-      window.history.replaceState({ path: cleanUrl }, '', cleanUrl)
-    }
-  }
-
   if (targetSub === 'recibidas' || targetSub === 'por_evaluar') {
-    if (activeSubTab.value !== targetSub) {
-      activeSubTab.value = targetSub
-      return
-    }
+    activeSubTab.value = targetSub
   }
   fetchData()
 })
@@ -82,10 +101,6 @@ function handleTokenClick(row) {
   showGenerateModal.value = true
 }
 
-function onGenerateSuccess() {
-  if (activeSubTab.value === 'por_evaluar') fetchData()
-}
-
 async function revokeToken(item) {
   if (!hasPermission('editar_resena') || !item) return
   const result = await window.Swal?.fire({
@@ -98,17 +113,14 @@ async function revokeToken(item) {
   if (!result?.isConfirmed) return
 
   try {
-    await apiClient.post('revoke_link', { fila: item.fila })
+    const { error } = await supabase
+      .from('tokens')
+      .update({ estado: 'Cancelado' })
+      .eq('id_enlace', item.id)
+
+    if (error) throw error
     item.estado = 'Revocado'
     showGenerateModal.value = false
-    window.Swal?.fire({
-      icon: 'success',
-      title: 'Enlace revocado',
-      toast: true,
-      position: 'top-end',
-      timer: 1500,
-      showConfirmButton: false
-    })
   } catch (e) {
     window.Swal?.fire('Error', e.message, 'error')
   }
@@ -171,7 +183,7 @@ async function revokeToken(item) {
     <GenerarResenaModal
       v-model="showGenerateModal"
       :initial-token="selectedToken"
-      @success="onGenerateSuccess"
+      @success="fetchData"
       @revoke="revokeToken"
     />
   </div>
@@ -179,11 +191,7 @@ async function revokeToken(item) {
 
 <style scoped>
 .fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
+.fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
+.fade-leave-to { opacity: 0; }
 </style>
