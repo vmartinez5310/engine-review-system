@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, nextTick, onMounted, computed } from 'vue'
 import { supabase } from '../../services/supabaseClient'
 import { fetchUserInfo } from '../../composables/useAuth'
 
@@ -8,9 +8,15 @@ const emit = defineEmits(['login-success'])
 
 const step = ref('EMAIL')
 const email = ref('')
-const otp = ref('')
 const isLoading = ref(false)
 const errorMsg = ref('')
+
+// 6 casillas independientes
+const digits = reactive(['', '', '', '', '', ''])
+const inputRefs = ref([])
+
+const fullOtp = computed(() => digits.join(''))
+const isOtpComplete = computed(() => digits.every(d => d !== ''))
 
 onMounted(() => {
   const isDark = localStorage.getItem('theme') === 'dark' ||
@@ -50,7 +56,12 @@ async function solicitarAcceso() {
     })
 
     if (otpError) throw otpError
+
+    // Limpiar casillas y pasar a vista OTP
+    for (let i = 0; i < 6; i++) digits[i] = ''
     step.value = 'OTP'
+    await nextTick()
+    inputRefs.value[0]?.focus()
   } catch (e) {
     errorMsg.value = e.message || 'Error al enviar el código de verificación'
   } finally {
@@ -58,10 +69,59 @@ async function solicitarAcceso() {
   }
 }
 
+function handleInput(index, event) {
+  const value = event.target.value
+
+  // Filtrar solo caracteres numéricos (el último tecleado)
+  const numeric = value.replace(/\D/g, '')
+  if (!numeric) {
+    digits[index] = ''
+    return
+  }
+
+  digits[index] = numeric.slice(-1)
+
+  // Avanzar al siguiente recuadro automáticamente
+  if (index < 5) {
+    nextTick(() => inputRefs.value[index + 1]?.focus())
+  } else if (isOtpComplete.value) {
+    // Si completó el sexto dígito, disparar verificación automáticamente
+    verificarCodigo()
+  }
+}
+
+function handleKeyDown(index, event) {
+  // Retroceder al borrar si la casilla ya está vacía
+  if (event.key === 'Backspace' && !digits[index] && index > 0) {
+    inputRefs.value[index - 1]?.focus()
+  }
+}
+
+function handlePaste(event) {
+  event.preventDefault()
+  const pastedData = (event.clipboardData || window.clipboardData).getData('text')
+  const numeric = pastedData.replace(/\D/g, '').slice(0, 6)
+
+  if (!numeric) return
+
+  for (let i = 0; i < 6; i++) {
+    digits[i] = numeric[i] || ''
+  }
+
+  // Poner el foco en la última casilla llenada o en la que sigue
+  const nextEmpty = digits.findIndex(d => d === '')
+  if (nextEmpty !== -1) {
+    inputRefs.value[nextEmpty]?.focus()
+  } else {
+    inputRefs.value[5]?.focus()
+    verificarCodigo()
+  }
+}
+
 async function verificarCodigo() {
-  const tokenLimpio = otp.value.trim()
-  if (tokenLimpio.length < 6) {
-    errorMsg.value = 'Ingresa el código completo recibido'
+  const tokenLimpio = fullOtp.value.trim()
+  if (tokenLimpio.length !== 6) {
+    errorMsg.value = 'Debes ingresar los 6 dígitos del código'
     return
   }
 
@@ -79,7 +139,7 @@ async function verificarCodigo() {
 
     const sincronizado = await fetchUserInfo()
     if (!sincronizado) {
-      throw new Error('Sesión creada, pero el correo no coincide con un registro activo en la whitelist.')
+      throw new Error('Sesión creada, pero no se pudo cargar el perfil institucional.')
     }
 
     emit('login-success', data.session?.access_token)
@@ -88,6 +148,12 @@ async function verificarCodigo() {
   } finally {
     isLoading.value = false
   }
+}
+
+function regresarAEmail() {
+  step.value = 'EMAIL'
+  errorMsg.value = ''
+  for (let i = 0; i < 6; i++) digits[i] = ''
 }
 </script>
 
@@ -109,6 +175,7 @@ async function verificarCodigo() {
         <p class="text-slate-500 dark:text-slate-400 text-sm mt-1"> {{ config?.nombre || 'Dashboard' }} </p>
       </div>
 
+      <!-- Paso 1: Formulario Correo -->
       <form v-if="step === 'EMAIL'" @submit.prevent="solicitarAcceso" class="space-y-5" novalidate>
         <div>
           <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Correo electrónico</label>
@@ -133,34 +200,48 @@ async function verificarCodigo() {
         </button>
       </form>
 
-      <form v-if="step === 'OTP'" @submit.prevent="verificarCodigo" class="space-y-5">
+      <!-- Paso 2: 6 Casillas de PIN OTP -->
+      <form v-if="step === 'OTP'" @submit.prevent="verificarCodigo" class="space-y-6">
         <p class="text-sm text-slate-500 dark:text-slate-400 text-center leading-relaxed">
-          Ingresa el código que enviamos a<br />
-          <strong class="text-slate-800 dark:text-white"> {{ email }} </strong>
+          Ingresa el código de 6 dígitos que enviamos a<br />
+          <strong class="text-slate-800 dark:text-white">{{ email }}</strong>
         </p>
-        <input
-          v-model="otp"
-          type="text"
-          maxlength="8"
-          class="w-full py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-3xl tracking-[0.25em] focus:ring-2 focus:ring-brand outline-none font-mono font-bold text-slate-800 dark:text-white transition-all"
-          placeholder="••••••••"
-          required
-        />
+
+        <!-- Cuadrícula interactiva de 6 dígitos -->
+        <div class="flex items-center justify-center gap-2 sm:gap-2.5" @paste="handlePaste">
+          <input
+            v-for="(digit, i) in digits"
+            :key="i"
+            :ref="el => { if (el) inputRefs[i] = el }"
+            v-model="digits[i]"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            class="w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold font-mono bg-slate-50 dark:bg-slate-900/50 border-2 rounded-xl outline-none transition-all duration-150 select-none text-slate-900 dark:text-white"
+            :class="digits[i] ? 'border-brand shadow-sm shadow-brand/20' : 'border-slate-200 dark:border-slate-700 focus:border-brand'"
+            @input="handleInput(i, $event)"
+            @keydown="handleKeyDown(i, $event)"
+          />
+        </div>
+
         <Transition name="fade">
           <p v-if="errorMsg" class="text-red-500 text-sm font-medium text-center"> {{ errorMsg }} </p>
         </Transition>
+
         <button
           type="submit"
-          :disabled="isLoading"
-          class="w-full bg-slate-800 hover:bg-slate-900 dark:bg-brand dark:hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+          :disabled="isLoading || !isOtpComplete"
+          class="w-full bg-slate-800 hover:bg-slate-900 dark:bg-brand dark:hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
         >
           <i v-if="isLoading" class="fas fa-spinner fa-spin" />
           <span>{{ isLoading ? 'Verificando...' : 'Validar Acceso' }}</span>
         </button>
+
         <button
           type="button"
-          class="w-full text-center text-sm font-medium text-slate-500 hover:text-brand transition-colors mt-2 cursor-pointer"
-          @click="step = 'EMAIL'; otp = ''"
+          class="w-full text-center text-sm font-medium text-slate-500 hover:text-brand transition-colors cursor-pointer"
+          @click="regresarAEmail"
         >
           <i class="fas fa-arrow-left mr-1" /> Modificar correo
         </button>
