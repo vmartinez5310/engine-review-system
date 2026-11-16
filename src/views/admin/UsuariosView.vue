@@ -36,6 +36,7 @@ function openCreate() {
 }
 
 function openEdit(user) {
+  if (!hasPermission('gestionar_usuarios')) return
   selectedUser.value = user
   showFormModal.value = true
 }
@@ -84,6 +85,7 @@ function initials(name) {
       search-placeholder="Buscar usuario..."
       :filter-options="['Activo', 'Pendiente', 'Suspendido']"
       filter-column-key="estado"
+      @row-click="openEdit"
     >
       <template #header-actions>
         <BaseButton
