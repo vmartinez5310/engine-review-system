@@ -11,6 +11,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "sweetalert2": "^11.26.25",
     "vue": "^3.5.42"
   },
