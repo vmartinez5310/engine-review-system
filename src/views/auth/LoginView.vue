@@ -28,27 +28,29 @@ async function solicitarAcceso() {
   isLoading.value = true
   errorMsg.value = ''
   try {
-    // Verificar previamente que el correo exista en la tabla whitelist
-    const { data: usuario, error: userError } = await supabase
-      .from('whitelist')
-      .select('estado')
-      .ilike('email', cleanEmail)
-      .maybeSingle()
+    // 1. Verificación segura en base de datos mediante RPC (sin violar RLS)
+    const { data: check, error: rpcError } = await supabase.rpc('check_email_authorized', {
+      user_email: cleanEmail
+    })
 
-    if (userError) throw userError
-
-    if (!usuario) {
-      throw new Error('El correo ingresado no cuenta con autorización de acceso.')
+    if (rpcError) {
+      console.error('Error RPC check_email_authorized:', rpcError)
+      throw new Error('No se pudo verificar la autorización del correo.')
     }
 
-    if (String(usuario.estado).toUpperCase() === 'SUSPENDIDO') {
-      throw new Error('Acceso revocado: esta cuenta ha sido suspendida.')
+    if (!check?.authorized) {
+      if (check?.reason === 'suspended') {
+        throw new Error('Esta cuenta ha sido suspendida. Contacta a un administrador.')
+      }
+      throw new Error('El correo ingresado no está registrado en la lista de acceso.')
     }
 
-    // Solicitar OTP mediante Supabase Auth
+    // 2. Solicitar OTP a Supabase Auth
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
-      options: { shouldCreateUser: true }
+      options: {
+        shouldCreateUser: true
+      }
     })
 
     if (otpError) throw otpError
@@ -63,7 +65,7 @@ async function solicitarAcceso() {
 async function verificarCodigo() {
   const tokenLimpio = otp.value.trim()
   if (tokenLimpio.length < 6) {
-    errorMsg.value = 'El código debe contener al menos 6 dígitos'
+    errorMsg.value = 'Ingresa el código de 6 dígitos'
     return
   }
 
@@ -81,7 +83,7 @@ async function verificarCodigo() {
 
     const sincronizado = await fetchUserInfo()
     if (!sincronizado) {
-      throw new Error('No se pudo inicializar la sesión del usuario.')
+      throw new Error('Sesión creada, pero no se pudo cargar el perfil institucional.')
     }
 
     emit('login-success', data.session?.access_token)

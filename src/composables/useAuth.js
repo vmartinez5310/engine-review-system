@@ -45,15 +45,15 @@ export async function fetchUserInfo() {
 
     const emailLimpio = session.user.email.toLowerCase().trim()
 
-    // Consultar perfil de whitelist en Supabase
+    // Buscar perfil de whitelist por email o auth_user_id
     const { data: usuario, error: userError } = await supabase
       .from('whitelist')
       .select('*')
-      .ilike('email', emailLimpio)
+      .or(`email.ilike.${emailLimpio},auth_user_id.eq.${session.user.id}`)
       .maybeSingle()
 
     if (userError || !usuario) {
-      console.warn('Usuario no encontrado en la whitelist institucional:', emailLimpio)
+      console.warn('Usuario no encontrado en la whitelist:', emailLimpio)
       await supabase.auth.signOut()
       authState.user = null
       authState.isAuthenticated = false
@@ -64,28 +64,13 @@ export async function fetchUserInfo() {
       await supabase.auth.signOut()
       authState.user = null
       authState.isAuthenticated = false
-      throw new Error('Tu cuenta se encuentra suspendida. Contacta a un administrador.')
-    }
-
-    // Si el usuario estaba pendiente de activación, se activa con el primer inicio de sesión
-    if (String(usuario.estado).toUpperCase() === 'PENDIENTE') {
-      await supabase
-        .from('whitelist')
-        .update({ estado: 'Activo', auth_user_id: session.user.id })
-        .eq('id', usuario.id)
-      usuario.estado = 'Activo'
-    } else if (!usuario.auth_user_id) {
-      // Vincular UUID de autenticación si aún no lo tiene
-      await supabase
-        .from('whitelist')
-        .update({ auth_user_id: session.user.id })
-        .eq('id', usuario.id)
+      throw new Error('Tu cuenta se encuentra suspendida.')
     }
 
     const rol = String(usuario.rol || 'USUARIO').toUpperCase().trim()
     const permisos = ROLES_PERMISOS[rol] || ROLES_PERMISOS.USUARIO
 
-    // Notificaciones: conteo de reseñas pendientes y enlaces
+    // Notificaciones: conteos
     const [{ count: resenasNuevas }, { count: seguimientosAtrasados }] = await Promise.all([
       supabase.from('resenas').select('*', { count: 'exact', head: true }).eq('estado', 'Pendiente'),
       supabase.from('tokens').select('*', { count: 'exact', head: true }).eq('estado', 'Activo')
@@ -108,7 +93,7 @@ export async function fetchUserInfo() {
     authState.isAuthenticated = true
     return true
   } catch (err) {
-    console.error('Error al sincronizar usuario:', err)
+    console.error('Error al sincronizar perfil:', err)
     authState.user = null
     authState.isAuthenticated = false
     return false
@@ -129,7 +114,6 @@ export function hasPermission(permission) {
   return (authState.user?.permisos || []).includes(permission)
 }
 
-// Suscripción al estado de autenticación en Supabase
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     await fetchUserInfo()
