@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { apiClient } from '../../services/api'
+import { supabase } from '../../services/supabaseClient'
+import { fetchUserInfo } from '../../composables/useAuth'
 
 const props = defineProps({ config: Object })
 const emit = defineEmits(['login-success'])
@@ -18,34 +19,74 @@ onMounted(() => {
 })
 
 async function solicitarAcceso() {
-  if (!email.value.includes('@')) {
-    errorMsg.value = 'Ingresa un formato válido'
+  const cleanEmail = email.value.toLowerCase().trim()
+  if (!cleanEmail.includes('@')) {
+    errorMsg.value = 'Ingresa un formato de correo válido'
     return
   }
+
   isLoading.value = true
   errorMsg.value = ''
   try {
-    await apiClient.post('request_otp', { email: email.value })
+    // Verificar previamente que el correo exista en la tabla whitelist
+    const { data: usuario, error: userError } = await supabase
+      .from('whitelist')
+      .select('estado')
+      .ilike('email', cleanEmail)
+      .maybeSingle()
+
+    if (userError) throw userError
+
+    if (!usuario) {
+      throw new Error('El correo ingresado no cuenta con autorización de acceso.')
+    }
+
+    if (String(usuario.estado).toUpperCase() === 'SUSPENDIDO') {
+      throw new Error('Acceso revocado: esta cuenta ha sido suspendida.')
+    }
+
+    // Solicitar OTP mediante Supabase Auth
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: { shouldCreateUser: true }
+    })
+
+    if (otpError) throw otpError
     step.value = 'OTP'
   } catch (e) {
-    errorMsg.value = e.message
+    errorMsg.value = e.message || 'Error al enviar el código de verificación'
   } finally {
     isLoading.value = false
   }
 }
 
 async function verificarCodigo() {
-  if (otp.value.length !== 6) {
-    errorMsg.value = 'El código debe tener 6 dígitos'
+  const tokenLimpio = otp.value.trim()
+  if (tokenLimpio.length < 6) {
+    errorMsg.value = 'El código debe contener al menos 6 dígitos'
     return
   }
+
   isLoading.value = true
   errorMsg.value = ''
   try {
-    const { token } = await apiClient.post('verify_otp', { email: email.value, otp: otp.value })
-    emit('login-success', token)
+    const cleanEmail = email.value.toLowerCase().trim()
+    const { data, error: verifyError } = await supabase.auth.verifyOtp({
+      email: cleanEmail,
+      token: tokenLimpio,
+      type: 'email'
+    })
+
+    if (verifyError) throw verifyError
+
+    const sincronizado = await fetchUserInfo()
+    if (!sincronizado) {
+      throw new Error('No se pudo inicializar la sesión del usuario.')
+    }
+
+    emit('login-success', data.session?.access_token)
   } catch (e) {
-    errorMsg.value = e.message
+    errorMsg.value = e.message || 'Código inválido o expirado'
   } finally {
     isLoading.value = false
   }
@@ -67,7 +108,7 @@ async function verificarCodigo() {
           {{ config?.nombre?.charAt(0) || 'D' }}
         </div>
         <h2 class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Acceso al sistema</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">{{ config?.nombre || 'Cargando información...' }}</p>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1"> {{ config?.nombre || 'Dashboard' }} </p>
       </div>
 
       <form v-if="step === 'EMAIL'" @submit.prevent="solicitarAcceso" class="space-y-5" novalidate>
@@ -82,45 +123,45 @@ async function verificarCodigo() {
           />
         </div>
         <Transition name="fade">
-          <p v-if="errorMsg" class="text-red-500 text-sm font-medium">{{ errorMsg }}</p>
+          <p v-if="errorMsg" class="text-red-500 text-sm font-medium"> {{ errorMsg }} </p>
         </Transition>
         <button
           type="submit"
           :disabled="isLoading"
-          class="w-full bg-brand hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md shadow-brand/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          class="w-full bg-brand hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md shadow-brand/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           <i v-if="isLoading" class="fas fa-spinner fa-spin" />
-          <span>{{ isLoading ? 'Procesando...' : 'Continuar' }}</span>
+          <span>{{ isLoading ? 'Procesando...' : 'Enviar Código' }}</span>
         </button>
       </form>
 
       <form v-if="step === 'OTP'" @submit.prevent="verificarCodigo" class="space-y-5">
         <p class="text-sm text-slate-500 dark:text-slate-400 text-center leading-relaxed">
-          Ingresa el código de 6 dígitos que enviamos a<br />
-          <strong class="text-slate-800 dark:text-white">{{ email }}</strong>
+          Ingresa el código de 6 dígitos enviado a<br />
+          <strong class="text-slate-800 dark:text-white"> {{ email }} </strong>
         </p>
         <input
           v-model="otp"
           type="text"
-          maxlength="6"
-          class="w-full py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-3xl tracking-[0.5em] focus:ring-2 focus:ring-brand outline-none font-mono font-bold text-slate-800 dark:text-white transition-all"
+          maxlength="8"
+          class="w-full py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-3xl tracking-[0.3em] focus:ring-2 focus:ring-brand outline-none font-mono font-bold text-slate-800 dark:text-white transition-all"
           placeholder="••••••"
           required
         />
         <Transition name="fade">
-          <p v-if="errorMsg" class="text-red-500 text-sm font-medium text-center">{{ errorMsg }}</p>
+          <p v-if="errorMsg" class="text-red-500 text-sm font-medium text-center"> {{ errorMsg }} </p>
         </Transition>
         <button
           type="submit"
           :disabled="isLoading"
-          class="w-full bg-slate-800 hover:bg-slate-900 dark:bg-brand dark:hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          class="w-full bg-slate-800 hover:bg-slate-900 dark:bg-brand dark:hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           <i v-if="isLoading" class="fas fa-spinner fa-spin" />
-          <span>{{ isLoading ? 'Verificando...' : 'Validar acceso' }}</span>
+          <span>{{ isLoading ? 'Verificando...' : 'Validar Acceso' }}</span>
         </button>
         <button
           type="button"
-          class="w-full text-center text-sm font-medium text-slate-500 hover:text-brand transition-colors mt-2"
+          class="w-full text-center text-sm font-medium text-slate-500 hover:text-brand transition-colors mt-2 cursor-pointer"
           @click="step = 'EMAIL'; otp = ''"
         >
           <i class="fas fa-arrow-left mr-1" /> Modificar correo
