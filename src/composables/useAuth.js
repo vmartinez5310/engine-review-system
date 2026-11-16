@@ -43,57 +43,44 @@ export async function fetchUserInfo() {
       return false
     }
 
-    const emailLimpio = session.user.email.toLowerCase().trim()
+    // Usar la función RPC para garantizar la lectura del perfil sin problemas de RLS
+    const { data: result, error: rpcError } = await supabase.rpc('get_my_profile')
 
-    // Buscar perfil de whitelist por email o auth_user_id
-    const { data: usuario, error: userError } = await supabase
-      .from('whitelist')
-      .select('*')
-      .or(`email.ilike.${emailLimpio},auth_user_id.eq.${session.user.id}`)
-      .maybeSingle()
-
-    if (userError || !usuario) {
-      console.warn('Usuario no encontrado en la whitelist:', emailLimpio)
+    if (rpcError || !result?.success) {
+      console.warn('Error al obtener perfil:', rpcError?.message || result?.error)
+      // Si el perfil no existe en la whitelist, cerrar sesión
       await supabase.auth.signOut()
       authState.user = null
       authState.isAuthenticated = false
       return false
     }
 
-    if (String(usuario.estado).toUpperCase() === 'SUSPENDIDO') {
+    const p = result.profile
+    if (String(p.estado).toUpperCase() === 'SUSPENDIDO') {
       await supabase.auth.signOut()
       authState.user = null
       authState.isAuthenticated = false
       throw new Error('Tu cuenta se encuentra suspendida.')
     }
 
-    const rol = String(usuario.rol || 'USUARIO').toUpperCase().trim()
+    const rol = String(p.rol || 'USUARIO').toUpperCase().trim()
     const permisos = ROLES_PERMISOS[rol] || ROLES_PERMISOS.USUARIO
 
-    // Notificaciones: conteos
-    const [{ count: resenasNuevas }, { count: seguimientosAtrasados }] = await Promise.all([
-      supabase.from('resenas').select('*', { count: 'exact', head: true }).eq('estado', 'Pendiente'),
-      supabase.from('tokens').select('*', { count: 'exact', head: true }).eq('estado', 'Activo')
-    ])
-
     authState.user = {
-      userId: usuario.user_id || usuario.id,
-      nombre: usuario.nombre || 'Usuario',
-      email: usuario.email,
-      rol: usuario.rol || 'USUARIO',
-      estado: usuario.estado,
-      logo: usuario.logo || '',
+      userId: p.userId,
+      nombre: p.nombre || 'Usuario',
+      email: p.email,
+      rol: p.rol || 'USUARIO',
+      estado: p.estado,
+      logo: p.logo || '',
       permisos,
-      notificaciones: {
-        resenasNuevas: resenasNuevas || 0,
-        seguimientosAtrasados: seguimientosAtrasados || 0
-      }
+      notificaciones: p.notificaciones || { resenasNuevas: 0, seguimientosAtrasados: 0 }
     }
 
     authState.isAuthenticated = true
     return true
   } catch (err) {
-    console.error('Error al sincronizar perfil:', err)
+    console.error('Error en fetchUserInfo:', err)
     authState.user = null
     authState.isAuthenticated = false
     return false

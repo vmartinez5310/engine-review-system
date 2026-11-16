@@ -28,7 +28,6 @@ async function solicitarAcceso() {
   isLoading.value = true
   errorMsg.value = ''
   try {
-    // 1. Verificación segura en base de datos mediante RPC (sin violar RLS)
     const { data: check, error: rpcError } = await supabase.rpc('check_email_authorized', {
       user_email: cleanEmail
     })
@@ -45,12 +44,9 @@ async function solicitarAcceso() {
       throw new Error('El correo ingresado no está registrado en la lista de acceso.')
     }
 
-    // 2. Solicitar OTP a Supabase Auth
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
-      options: {
-        shouldCreateUser: true
-      }
+      options: { shouldCreateUser: true }
     })
 
     if (otpError) throw otpError
@@ -65,7 +61,7 @@ async function solicitarAcceso() {
 async function verificarCodigo() {
   const tokenLimpio = otp.value.trim()
   if (tokenLimpio.length < 6) {
-    errorMsg.value = 'Ingresa el código de 6 dígitos'
+    errorMsg.value = 'Ingresa el código completo recibido'
     return
   }
 
@@ -83,7 +79,7 @@ async function verificarCodigo() {
 
     const sincronizado = await fetchUserInfo()
     if (!sincronizado) {
-      throw new Error('Sesión creada, pero no se pudo cargar el perfil institucional.')
+      throw new Error('Sesión creada, pero el correo no coincide con un registro activo en la whitelist.')
     }
 
     emit('login-success', data.session?.access_token)
@@ -139,15 +135,15 @@ async function verificarCodigo() {
 
       <form v-if="step === 'OTP'" @submit.prevent="verificarCodigo" class="space-y-5">
         <p class="text-sm text-slate-500 dark:text-slate-400 text-center leading-relaxed">
-          Ingresa el código de 6 dígitos enviado a<br />
+          Ingresa el código que enviamos a<br />
           <strong class="text-slate-800 dark:text-white"> {{ email }} </strong>
         </p>
         <input
           v-model="otp"
           type="text"
           maxlength="8"
-          class="w-full py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-3xl tracking-[0.3em] focus:ring-2 focus:ring-brand outline-none font-mono font-bold text-slate-800 dark:text-white transition-all"
-          placeholder="••••••"
+          class="w-full py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-3xl tracking-[0.25em] focus:ring-2 focus:ring-brand outline-none font-mono font-bold text-slate-800 dark:text-white transition-all"
+          placeholder="••••••••"
           required
         />
         <Transition name="fade">
