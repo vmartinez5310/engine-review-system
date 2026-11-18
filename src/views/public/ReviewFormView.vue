@@ -30,10 +30,11 @@ const canSubmit = computed(() =>
 
 onMounted(async () => {
   try {
+    const cleanToken = props.inviteToken.trim()
     const { data: token, error } = await supabase
       .from('tokens')
       .select('*')
-      .eq('id_enlace', props.inviteToken.trim())
+      .eq('id_enlace', cleanToken)
       .maybeSingle()
 
     if (error || !token || token.estado !== 'Activo') {
@@ -59,7 +60,7 @@ async function enviar() {
     const idResena = 'RES-' + Math.random().toString(36).substring(2, 10).toUpperCase()
     const userIdAsociado = tokenRecord.value?.user_id_admin || 'WEB'
 
-    // Registrar reseña
+    // 1. Registrar la reseña
     const { error: revErr } = await supabase.from('resenas').insert({
       id_resena: idResena,
       user_id: userIdAsociado,
@@ -74,7 +75,7 @@ async function enviar() {
 
     if (revErr) throw revErr
 
-    // Marcar token como Usado
+    // 2. Marcar el token como Usado
     if (tokenRecord.value) {
       await supabase
         .from('tokens')
@@ -92,10 +93,10 @@ async function enviar() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4 py-10 bg-slate-50 dark:bg-slate-900">
+  <div class="min-h-screen flex items-center justify-center px-4 py-8 bg-slate-50 dark:bg-slate-900">
     <div v-if="loading" class="text-center">
       <div class="w-12 h-12 border-4 border-slate-200 border-t-brand rounded-full animate-spin mx-auto mb-4" />
-      <p class="text-sm text-slate-500 tracking-wide uppercase">Validando enlace...</p>
+      <p class="text-sm text-slate-500 tracking-wide uppercase">Validando invitación...</p>
     </div>
 
     <div
@@ -120,7 +121,7 @@ async function enviar() {
       </div>
       <h1 class="text-xl font-bold text-slate-800 dark:text-white mb-2">¡Muchas gracias!</h1>
       <p class="text-slate-500 dark:text-slate-400 text-sm">
-        Tu reseña se ha registrado con éxito y pasará a moderación.
+        Tu reseña se ha registrado con éxito.
       </p>
     </div>
 
@@ -132,18 +133,19 @@ async function enviar() {
       <div class="text-center mb-2">
         <h1 class="text-xl font-bold text-slate-800 dark:text-white">Comparte tu experiencia</h1>
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {{ props.config?.nombre || 'Inmobiliarte' }}
+          {{ props.config?.nombre || 'Inmobiliarte 22' }}
         </p>
       </div>
 
       <div>
         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Nombre público</label>
+        <!-- text-base (16px) en móvil previene el zoom de Safari y Android -->
         <input
           v-model="nombre"
           type="text"
           required
           minlength="2"
-          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white"
+          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white text-base sm:text-sm"
         />
       </div>
 
@@ -152,7 +154,7 @@ async function enviar() {
         <input
           v-model="zona"
           type="text"
-          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white"
+          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white text-base sm:text-sm"
         />
       </div>
 
@@ -163,7 +165,7 @@ async function enviar() {
             v-for="n in 5"
             :key="n"
             type="button"
-            class="text-2xl p-1"
+            class="text-3xl p-1 focus:outline-none transition-transform active:scale-110"
             @mouseenter="hoverStar = n"
             @click="calificacion = n"
           >
@@ -177,14 +179,14 @@ async function enviar() {
         <textarea
           v-model="comentario"
           rows="4"
-          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white resize-none"
+          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white text-base sm:text-sm resize-none"
           placeholder="Cuéntanos sobre el servicio recibido..."
         />
       </div>
 
       <label class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
-        <input v-model="legalOk" type="checkbox" class="mt-1 rounded border-slate-300 text-brand focus:ring-brand" required />
-        <span>Acepto el aviso de privacidad y autorizo la publicación de mi reseña.</span>
+        <input v-model="legalOk" type="checkbox" class="mt-1 w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" required />
+        <span class="text-xs sm:text-sm">Acepto el aviso de privacidad y autorizo la publicación de mi reseña.</span>
       </label>
 
       <p v-if="errorMsg" class="text-sm text-red-500 font-medium">{{ errorMsg }}</p>
@@ -192,7 +194,7 @@ async function enviar() {
       <button
         type="submit"
         :disabled="!canSubmit"
-        class="w-full bg-brand hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+        class="w-full bg-brand hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer text-base"
       >
         <span>{{ submitting ? 'Enviando...' : 'Enviar Reseña' }}</span>
       </button>
