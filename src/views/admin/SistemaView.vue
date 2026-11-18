@@ -17,7 +17,8 @@ const form = ref({
   Color_Primario: '#4cc3e9',
   Logo_Horizontal: '',
   Logo_Vertical: '',
-  URL_Frontend_App: ''
+  URL_Frontend_App: '',
+  Aviso_Privacidad_URL: ''
 })
 
 const previewH = computed(() => {
@@ -36,7 +37,8 @@ function applyFormValues(map) {
     Color_Primario: map.Color_Primario || '#4cc3e9',
     Logo_Horizontal: map.Logo_Horizontal || '',
     Logo_Vertical: map.Logo_Vertical || '',
-    URL_Frontend_App: map.URL_Frontend_App || ''
+    URL_Frontend_App: map.URL_Frontend_App || '',
+    Aviso_Privacidad_URL: map.Aviso_Privacidad_URL || ''
   }
 }
 
@@ -104,7 +106,7 @@ onMounted(loadConfig)
         </p>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">Identidad de Marca y Enlaces</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Parámetros visuales y dirección del formulario público
+          Parámetros visuales, aviso de privacidad y enlaces del sistema
         </p>
       </div>
 
@@ -160,7 +162,6 @@ onMounted(loadConfig)
             <div class="flex-1 w-full">
               <BaseInput v-model="form.Logo_Horizontal" label="Logo horizontal (URL)" placeholder="https://..." />
             </div>
-            <!-- Contenedor neutro para evitar que el logo se pierda en el color de marca -->
             <div class="w-full sm:w-36 h-11 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
               <img v-if="previewH" :src="previewH" alt="Logo horizontal" class="max-h-full max-w-full object-contain" />
               <span v-else class="text-[11px] text-slate-400">Sin vista previa</span>
@@ -171,7 +172,6 @@ onMounted(loadConfig)
             <div class="flex-1 w-full">
               <BaseInput v-model="form.Logo_Vertical" label="Logo vertical o icono (URL)" placeholder="https://..." />
             </div>
-            <!-- Contenedor neutro para evitar que el logo se pierda en el color de marca -->
             <div class="w-14 h-11 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
               <img v-if="previewV" :src="previewV" alt="Logo vertical" class="max-h-full max-w-full object-contain" />
               <i v-else class="fas fa-image text-slate-400 text-sm"></i>
@@ -183,10 +183,13 @@ onMounted(loadConfig)
       <div class="lg:col-span-5 flex flex-col gap-5">
         <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 p-5 sm:p-6 shadow-sm">
           <div class="mb-4 pb-3 border-b border-slate-100 dark:border-slate-700/60">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Formulario de Clientes</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">URL base donde se emitirán los enlaces de evaluación</p>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Enlaces del Sistema</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Parámetros de enlaces y cumplimiento legal</p>
           </div>
-          <BaseInput v-model="form.URL_Frontend_App" label="Dirección web de la aplicación" placeholder="https://..." />
+          <div class="space-y-4">
+            <BaseInput v-model="form.URL_Frontend_App" label="Dirección web de la aplicación" placeholder="https://..." />
+            <BaseInput v-model="form.Aviso_Privacidad_URL" label="Enlace del Aviso de Privacidad" placeholder="https://inmobiliarte22.com.mx/aviso-de-privacidad" icon="fas fa-shield-alt" />
+          </div>
           <div class="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80">
             <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Estructura del enlace generado</p>
             <p class="text-xs font-mono text-brand mt-1 truncate">

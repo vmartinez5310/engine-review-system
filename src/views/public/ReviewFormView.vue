@@ -20,6 +20,7 @@ const calificacion = ref(0)
 const hoverStar = ref(0)
 const comentario = ref('')
 const legalOk = ref(false)
+const privacyUrl = ref('')
 
 const canSubmit = computed(() =>
   nombre.value.trim().length >= 2 &&
@@ -31,13 +32,15 @@ const canSubmit = computed(() =>
 onMounted(async () => {
   try {
     const cleanToken = props.inviteToken.trim()
-    const { data: token, error } = await supabase
-      .from('tokens')
-      .select('*')
-      .eq('id_enlace', cleanToken)
-      .maybeSingle()
 
-    if (error || !token || token.estado !== 'Activo') {
+    // 1. Cargar el token y la URL del aviso de privacidad en paralelo
+    const [tokenRes, configRes] = await Promise.all([
+      supabase.from('tokens').select('*').eq('id_enlace', cleanToken).maybeSingle(),
+      supabase.from('configuracion').select('clave, valor').eq('clave', 'Aviso_Privacidad_URL').maybeSingle()
+    ])
+
+    const token = tokenRes.data
+    if (tokenRes.error || !token || token.estado !== 'Activo') {
       invalid.value = true
       return
     }
@@ -45,6 +48,7 @@ onMounted(async () => {
     tokenRecord.value = token
     nombre.value = token.nombre_cliente || ''
     zona.value = token.zona_servicio || ''
+    privacyUrl.value = configRes.data?.valor?.trim() || ''
   } catch (e) {
     invalid.value = true
   } finally {
@@ -60,7 +64,7 @@ async function enviar() {
     const idResena = 'RES-' + Math.random().toString(36).substring(2, 10).toUpperCase()
     const userIdAsociado = tokenRecord.value?.user_id_admin || 'WEB'
 
-    // 1. Registrar la reseña
+    // 1. Insertar la reseña
     const { error: revErr } = await supabase.from('resenas').insert({
       id_resena: idResena,
       user_id: userIdAsociado,
@@ -75,12 +79,12 @@ async function enviar() {
 
     if (revErr) throw revErr
 
-    // 2. Marcar el token como Usado
-    if (tokenRecord.value) {
+    // 2. Quemar el token explícitamente usando su id_enlace (además del trigger de base de datos)
+    if (tokenRecord.value?.id_enlace) {
       await supabase
         .from('tokens')
         .update({ estado: 'Usado' })
-        .eq('id', tokenRecord.value.id)
+        .eq('id_enlace', tokenRecord.value.id_enlace)
     }
 
     success.value = true
@@ -139,7 +143,6 @@ async function enviar() {
 
       <div>
         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Nombre público</label>
-        <!-- text-base (16px) en móvil previene el zoom de Safari y Android -->
         <input
           v-model="nombre"
           type="text"
@@ -185,8 +188,22 @@ async function enviar() {
       </div>
 
       <label class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
-        <input v-model="legalOk" type="checkbox" class="mt-1 w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" required />
-        <span class="text-xs sm:text-sm">Acepto el aviso de privacidad y autorizo la publicación de mi reseña.</span>
+        <input v-model="legalOk" type="checkbox" class="mt-1 w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand shrink-0" required />
+        <span class="text-xs sm:text-sm leading-relaxed">
+          Acepto el
+          <a
+            v-if="privacyUrl"
+            :href="privacyUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-brand font-semibold underline hover:brightness-110"
+            @click.stop
+          >
+            aviso de privacidad
+          </a>
+          <span v-else class="font-semibold text-slate-700 dark:text-slate-200">aviso de privacidad</span>
+          y autorizo la publicación de mi reseña.
+        </span>
       </label>
 
       <p v-if="errorMsg" class="text-sm text-red-500 font-medium">{{ errorMsg }}</p>
