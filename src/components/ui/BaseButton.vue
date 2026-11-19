@@ -9,13 +9,13 @@ const props = defineProps({
 })
 
 const buttonClasses = computed(() => {
-  const base = "h-9 px-3.5 rounded-md text-xs font-medium transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
+  const base = "h-9 px-4 rounded-full text-xs font-medium tracking-wide transition-all inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
 
   const variants = {
-    primary: "bg-brand text-white hover:brightness-105 active:brightness-95",
-    secondary: "bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700",
+    primary: "bg-brand text-white hover:brightness-105 active:scale-[0.98] shadow-sm",
+    secondary: "bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700",
     danger: "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-900",
-    outline: "border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+    outline: "border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
   }
 
   return `${base} ${variants[props.variant] || variants.primary}`
