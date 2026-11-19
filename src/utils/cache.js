@@ -1,5 +1,5 @@
 export const cacheStorage = {
-  get(key, maxAgeMs = 180000) {
+  get(key, maxAgeMs = 300000) {
     try {
       const raw = sessionStorage.getItem(`app_cache_${key}`)
       if (!raw) return null
@@ -17,13 +17,16 @@ export const cacheStorage = {
         timestamp: Date.now()
       }))
     } catch (e) {
-      console.warn('Fallo al escribir en caché:', e)
+      console.warn('Fallo al escribir en cache:', e)
     }
   },
-  invalidate(key) {
+  remove(key) {
     try {
       sessionStorage.removeItem(`app_cache_${key}`)
     } catch {}
+  },
+  invalidate(key) {
+    this.remove(key)
   },
   invalidateAll() {
     try {
