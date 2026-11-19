@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../../services/supabaseClient'
 import { cacheStorage } from '../../utils/cache'
-import SkeletonBlock from '../../components/ui/SkeletonBlock.vue'
 
 defineProps({ config: { type: Object, default: () => ({}) } })
 
@@ -30,59 +29,7 @@ const conversionRate = computed(() => {
   return Math.round((kpis.value.tokensUsados / kpis.value.tokensTotal) * 100)
 })
 
-const secondaryCards = computed(() => [
-  {
-    key: 'totalResenas',
-    label: 'Volumen de Reseñas',
-    value: kpis.value.totalResenas,
-    subtext: 'Histórico acumulado',
-    icon: 'fas fa-layer-group',
-    iconBg: 'bg-amber-500/10 text-amber-500'
-  },
-  {
-    key: 'aprobadas',
-    label: 'Reseñas Publicadas',
-    value: kpis.value.aprobadas,
-    subtext: `${approvalRate.value}% del volumen total`,
-    icon: 'fas fa-check-circle',
-    iconBg: 'bg-emerald-500/10 text-emerald-500'
-  },
-  {
-    key: 'pendientes',
-    label: 'En Cola de Auditoría',
-    value: kpis.value.pendientes,
-    subtext: kpis.value.pendientes > 0 ? 'Requieren revisión' : 'Bandeja al día',
-    icon: 'fas fa-clock',
-    iconBg: 'bg-orange-500/10 text-orange-500'
-  },
-  {
-    key: 'tokensActivos',
-    label: 'Enlaces en Circulación',
-    value: kpis.value.tokensActivos,
-    subtext: 'Disponibles para clientes',
-    icon: 'fas fa-link',
-    iconBg: 'bg-sky-500/10 text-sky-500'
-  },
-  {
-    key: 'tokensTotal',
-    label: 'Emisión de Enlaces',
-    value: kpis.value.tokensTotal,
-    subtext: `${kpis.value.tokensUsados} canjeados con éxito`,
-    icon: 'fas fa-hashtag',
-    iconBg: 'bg-violet-500/10 text-violet-500'
-  },
-  {
-    key: 'usuariosActivos',
-    label: 'Operadores Activos',
-    value: kpis.value.usuariosActivos,
-    subtext: 'Con acceso autorizado',
-    icon: 'fas fa-users',
-    iconBg: 'bg-indigo-500/10 text-indigo-500'
-  }
-])
-
 async function load(forceRefresh = false) {
-  // 1. Cache Hit (render inmediato de métricas)
   if (!forceRefresh) {
     const cached = cacheStorage.get('dashboard_kpis', 120000)
     if (cached?.data) {
@@ -93,7 +40,6 @@ async function load(forceRefresh = false) {
     }
   }
 
-  // 2. Cache Miss o sincronización en background
   try {
     const [resenasRes, tokensRes, usersRes] = await Promise.all([
       supabase.from('resenas').select('calificacion, estado'),
@@ -143,87 +89,83 @@ onMounted(() => load(false))
 </script>
 
 <template>
-  <div class="h-full w-full flex flex-col overflow-y-auto lg:overflow-hidden pb-6 lg:pb-2 select-none">
-    <div class="shrink-0 flex items-center justify-between gap-4 pb-3.5 mb-4 border-b border-slate-200 dark:border-slate-800">
+  <div class="w-full flex flex-col gap-8 select-none">
+    <!-- Header de sección sutil -->
+    <div class="flex items-baseline justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-3">
       <div>
-        <span class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-          {{ config?.nombre || 'Centro de Control' }}
-        </span>
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Indicadores de Rendimiento
-        </h2>
+        <h3 class="text-sm font-medium text-slate-900 dark:text-slate-100">Indicadores Operativos</h3>
       </div>
-
-      <div class="flex items-center gap-3 shrink-0">
-        <span v-if="lastUpdated" class="text-xs text-slate-400 hidden sm:inline-block tabular-nums">
-          Sincronizado: {{ lastUpdated }}
-        </span>
+      <div class="flex items-center gap-3 text-xs text-slate-400">
+        <span v-if="lastUpdated" class="font-mono tabular-nums">Sincronizado {{ lastUpdated }}</span>
         <button
           @click="load(true)"
           :disabled="isLoading"
-          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
+          class="text-slate-600 dark:text-slate-300 hover:text-brand transition-colors cursor-pointer"
         >
-          <i :class="['fas fa-sync-alt text-slate-400 text-xs', { 'animate-spin text-amber-500': isLoading }]"></i>
-          <span class="hidden sm:inline">Actualizar</span>
+          Actualizar
         </button>
       </div>
     </div>
 
-    <div v-if="isLoading" class="flex-1 min-h-0">
-      <SkeletonBlock variant="bento" />
-    </div>
-
-    <div v-else class="flex flex-col lg:flex-1 lg:min-h-0 lg:grid lg:grid-rows-12 gap-4">
-      <div class="lg:row-span-5 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:min-h-0">
-        <div class="lg:col-span-7 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 p-5 shadow-sm flex flex-col justify-between">
-          <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-              Calificación Media Global
-            </span>
-            <div class="mt-3 flex items-baseline gap-3">
-              <span class="text-6xl font-extrabold text-slate-900 dark:text-white leading-none">
-                {{ (kpis.promedio || 0).toFixed(1) }}
-              </span>
-              <span class="text-sm font-semibold text-slate-400">/ 5.0 pts</span>
-            </div>
-          </div>
-          <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex justify-between items-center text-xs">
-            <span>Publicadas: <strong class="text-slate-800 dark:text-white">{{ kpis.aprobadas }}</strong> | Pendientes: <strong class="text-slate-800 dark:text-white">{{ kpis.pendientes }}</strong></span>
-            <span class="font-bold text-emerald-500">{{ approvalRate }}% Aprobación</span>
-          </div>
+    <!-- Retícula Arquitectónica Proporción Áurea (62% / 38%) sin cards -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 border border-slate-200/70 dark:border-slate-800/60 bg-white/40 dark:bg-[#0F172A]/20 backdrop-blur-md rounded-lg overflow-hidden">
+      <!-- Métrica Principal: Calificación -->
+      <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200/60 dark:border-slate-800/60">
+        <span class="text-[10px] font-mono tracking-[0.2em] uppercase text-slate-400">Calificación Global</span>
+        <div class="my-6 flex items-baseline gap-3">
+          <span class="text-6xl sm:text-7xl font-light tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">
+            {{ (kpis.promedio || 0).toFixed(1) }}
+          </span>
+          <span class="text-sm font-normal text-slate-400">/ 5.0 pts</span>
         </div>
-
-        <div class="lg:col-span-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 p-5 shadow-sm flex flex-col justify-between">
-          <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Conversión de Invitaciones</span>
-            <div class="mt-3 flex items-baseline gap-2.5">
-              <span class="text-6xl font-extrabold text-slate-900 dark:text-white leading-none">
-                {{ conversionRate }}%
-              </span>
-              <span class="text-sm text-slate-400">efectividad</span>
-            </div>
-          </div>
-          <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 text-xs text-slate-400">
-            Canjeados: <strong class="text-slate-800 dark:text-white">{{ kpis.tokensUsados }}</strong> de <strong class="text-slate-800 dark:text-white">{{ kpis.tokensTotal }}</strong> emitidos
-          </div>
+        <div class="flex items-center gap-4 text-xs text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-800/40">
+          <span>Publicadas: <strong class="text-slate-800 dark:text-slate-200 font-semibold">{{ kpis.aprobadas }}</strong></span>
+          <span>•</span>
+          <span>Pendientes: <strong class="text-slate-800 dark:text-slate-200 font-semibold">{{ kpis.pendientes }}</strong></span>
+          <span>•</span>
+          <span class="text-emerald-500 font-medium">{{ approvalRate }}% tasa de aprobación</span>
         </div>
       </div>
 
-      <div class="lg:row-span-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 gap-4 lg:min-h-0">
-        <div
-          v-for="c in secondaryCards"
-          :key="c.key"
-          class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 p-5 flex flex-col justify-between shadow-sm"
-        >
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">{{ c.label }}</span>
-            <div :class="['w-9 h-9 rounded-xl flex items-center justify-center', c.iconBg]">
-              <i :class="[c.icon, 'text-sm']"></i>
-            </div>
-          </div>
-          <p class="text-3xl font-extrabold text-slate-900 dark:text-white my-auto">{{ c.value }}</p>
-          <span class="text-xs text-slate-400">{{ c.subtext }}</span>
+      <!-- Métrica Secundaria: Conversión de Enlaces -->
+      <div class="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-between">
+        <span class="text-[10px] font-mono tracking-[0.2em] uppercase text-slate-400">Conversión de Invitaciones</span>
+        <div class="my-6 flex items-baseline gap-2">
+          <span class="text-6xl sm:text-7xl font-light tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">
+            {{ conversionRate }}%
+          </span>
+          <span class="text-sm font-normal text-slate-400">efectividad</span>
         </div>
+        <div class="text-xs text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-800/40">
+          <span>{{ kpis.tokensUsados }} canjeadas de {{ kpis.tokensTotal }} emitidas</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rejilla de métricas secundarias en retícula editorial continua -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 border border-slate-200/70 dark:border-slate-800/60 bg-white/40 dark:bg-[#0F172A]/20 backdrop-blur-md rounded-lg overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-slate-200/60 dark:divide-slate-800/60">
+      <div class="p-5 sm:p-6 flex flex-col justify-between">
+        <span class="text-[10px] font-mono tracking-[0.2em] uppercase text-slate-400">Total Reseñas</span>
+        <span class="text-3xl font-light text-slate-900 dark:text-slate-100 my-3 tabular-nums">{{ kpis.totalResenas }}</span>
+        <span class="text-xs text-slate-400">Histórico acumulado</span>
+      </div>
+
+      <div class="p-5 sm:p-6 flex flex-col justify-between">
+        <span class="text-[10px] font-mono tracking-[0.2em] uppercase text-slate-400">Por Auditar</span>
+        <span class="text-3xl font-light text-slate-900 dark:text-slate-100 my-3 tabular-nums">{{ kpis.pendientes }}</span>
+        <span class="text-xs text-slate-400">{{ kpis.pendientes > 0 ? 'Requieren moderación' : 'Bandeja al día' }}</span>
+      </div>
+
+      <div class="p-5 sm:p-6 flex flex-col justify-between">
+        <span class="text-[10px] font-mono tracking-[0.2em] uppercase text-slate-400">Enlaces Activos</span>
+        <span class="text-3xl font-light text-slate-900 dark:text-slate-100 my-3 tabular-nums">{{ kpis.tokensActivos }}</span>
+        <span class="text-xs text-slate-400">En circulación</span>
+      </div>
+
+      <div class="p-5 sm:p-6 flex flex-col justify-between">
+        <span class="text-[10px] font-mono tracking-[0.2em] uppercase text-slate-400">Operadores</span>
+        <span class="text-3xl font-light text-slate-900 dark:text-slate-100 my-3 tabular-nums">{{ kpis.usuariosActivos }}</span>
+        <span class="text-xs text-slate-400">Cuentas activas</span>
       </div>
     </div>
   </div>
