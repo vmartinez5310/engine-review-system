@@ -104,11 +104,11 @@ function handleTokenClick(row) {
 async function revokeToken(item) {
   if (!hasPermission('editar_resena') || !item) return
   const result = await window.Swal?.fire({
-    title: '¿Revocar enlace?',
-    text: `Se inhabilitará el enlace de ${item.cliente}`,
+    title: '¿Inhabilitar enlace?',
+    text: `Se cancelará el token de ${item.cliente}`,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: '#ef4444'
+    confirmButtonColor: '#e11d48'
   })
   if (!result?.isConfirmed) return
 
@@ -128,35 +128,38 @@ async function revokeToken(item) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-3">
-    <div class="flex bg-slate-200/50 dark:bg-slate-800/50 p-1.5 rounded-xl w-full sm:w-fit shrink-0">
+  <div class="h-full flex flex-col gap-4">
+    <!-- Selector segmentado fino -->
+    <div class="flex items-center gap-1 border-b border-slate-200/60 dark:border-slate-800/60 pb-3 shrink-0">
       <button
         type="button"
         :class="[
-          'flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm',
+          'px-4 py-1.5 text-xs font-mono tracking-wider uppercase transition-colors cursor-pointer rounded-md',
           activeSubTab === 'recibidas'
-            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white'
-            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 shadow-none'
+            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+            : 'text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
         ]"
         @click="activeSubTab = 'recibidas'"
       >
-        Bandeja de Entrada
+        Bandeja Recibidas
       </button>
+
       <button
         v-if="hasPermission('ver_seguimientos')"
         type="button"
         :class="[
-          'flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm',
+          'px-4 py-1.5 text-xs font-mono tracking-wider uppercase transition-colors cursor-pointer rounded-md',
           activeSubTab === 'por_evaluar'
-            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white'
-            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 shadow-none'
+            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+            : 'text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
         ]"
         @click="activeSubTab = 'por_evaluar'"
       >
-        Por Evaluar
+        Monitoreo de Enlaces
       </button>
     </div>
 
+    <!-- Área de tabla principal -->
     <div class="flex-1 overflow-hidden flex flex-col relative">
       <Transition name="fade" mode="out-in">
         <div v-if="activeSubTab === 'recibidas'" key="recibidas" class="absolute inset-0 flex flex-col">
@@ -191,7 +194,7 @@ async function revokeToken(item) {
 
 <style scoped>
 .fade-enter-active,
-.fade-leave-active { transition: opacity 0.2s ease; }
+.fade-leave-active { transition: opacity 0.15s ease; }
 .fade-enter-from,
 .fade-leave-to { opacity: 0; }
 </style>

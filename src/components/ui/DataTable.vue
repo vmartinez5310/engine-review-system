@@ -1,13 +1,4 @@
 <script setup>
-/**
- * DataTable visual contract (do not override from views):
- * - Shell: rounded-2xl border, full height flex column
- * - Toolbar: search (sm:w-72) | columns | filter chips | header-actions
- * - Desktop row: h-14, px-4, text-sm; sticky thead
- * - Mobile: card list, mobilePreviewCount fields visible
- * - Slots: header-actions, cell-{key}, actions
- * - Empty: EmptyState component only
- */
 import { ref, computed, watch, onMounted } from 'vue'
 
 const props = defineProps({
@@ -16,7 +7,7 @@ const props = defineProps({
   isLoading: { type: Boolean, default: false },
   filterOptions: { type: Array, default: () => [] },
   filterColumnKey: { type: String, default: '' },
-  searchPlaceholder: { type: String, default: 'Buscar...' },
+  searchPlaceholder: { type: String, default: 'Filtrar registros...' },
   mobilePreviewCount: { type: Number, default: 2 }
 })
 
@@ -91,9 +82,6 @@ const currentRangeEnd = computed(() =>
   Math.min(currentPage.value * itemsPerPage.value, totalItems.value)
 )
 
-const skeletonRows = [1, 2, 3, 4, 5]
-const skeletonMobile = [1, 2, 3]
-
 function handleSort(colKey) {
   if (sortColumn.value === colKey) {
     sortAsc.value = !sortAsc.value
@@ -115,77 +103,76 @@ function rowKey(row, index) {
 </script>
 
 <template>
-  <div
-    class="flex flex-col h-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors relative"
-  >
-    <!-- Toolbar -->
-    <div
-      class="h-14 px-3 sm:px-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 flex gap-2 items-center z-20"
-    >
-      <!-- CORRECCIÓN AQUÍ: Se eliminó w-full y shrink-0. Ahora flex-1 ocupa el espacio sobrante y min-w-0 evita desbordamientos -->
-      <div class="flex-1 sm:flex-initial sm:w-72 min-w-0">
-        <BaseInput v-model="searchQuery" :placeholder="searchPlaceholder" icon="fas fa-search" />
+  <div class="flex flex-col h-full bg-white/70 dark:bg-[#0F172A]/30 backdrop-blur-md rounded-xl border border-slate-200/60 dark:border-slate-800/50 overflow-hidden transition-all duration-300">
+    <!-- Barra superior de búsqueda y utilidades -->
+    <div class="h-14 px-4 sm:px-6 border-b border-slate-100 dark:border-slate-800/40 flex gap-3 items-center shrink-0">
+      <div class="flex-1 sm:w-64 sm:flex-initial relative">
+        <svg class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="searchPlaceholder"
+          class="w-full h-9 pl-9 pr-3 rounded-lg bg-slate-100/70 dark:bg-slate-900/40 border border-transparent focus:border-slate-200 dark:focus:border-slate-700 outline-none text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-all"
+        />
       </div>
 
-      <div class="flex gap-2 items-center ml-auto shrink-0">
+      <div class="flex items-center gap-2 ml-auto shrink-0">
+        <!-- Selector de Columnas -->
         <div class="relative">
-          <BaseButton
-            variant="outline"
-            icon="fas fa-columns"
-            class="px-3"
+          <button
+            type="button"
+            class="h-9 px-3 border border-slate-200/70 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-2 transition-colors cursor-pointer"
             @click="isColumnPickerOpen = !isColumnPickerOpen"
           >
+            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18"></path>
+            </svg>
             <span class="hidden sm:inline">Columnas</span>
-          </BaseButton>
-          <Transition name="fade">
-            <div
-              v-if="isColumnPickerOpen"
-              class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-50 p-2"
-            >
-              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-2 pt-1">
-                Mostrar columnas
-              </div>
-              <div class="flex flex-col max-h-64 overflow-y-auto custom-scrollbar">
-                <label
-                  v-for="col in columns"
-                  :key="col.key"
-                  class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
-                  :class="{ 'opacity-60 cursor-not-allowed': col.required }"
-                >
-                  <input
-                    v-model="selectedColumns"
-                    type="checkbox"
-                    :value="col.key"
-                    :disabled="col.required"
-                    class="w-4 h-4 rounded text-brand border-slate-300 focus:ring-brand"
-                  />
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300 flex-1">{{ col.label }}</span>
-                  <i v-if="col.required" class="fas fa-lock text-xs text-slate-400" />
-                </label>
-              </div>
+          </button>
+
+          <div v-if="isColumnPickerOpen" class="fixed inset-0 z-40" @click="isColumnPickerOpen = false"></div>
+
+          <div
+            v-if="isColumnPickerOpen"
+            class="absolute right-0 mt-2 w-48 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-2"
+          >
+            <div class="text-[9px] font-mono tracking-[0.2em] uppercase text-slate-400 px-2 py-1">Visibilidad</div>
+            <div class="flex flex-col gap-0.5 max-h-56 overflow-y-auto custom-scrollbar">
+              <label
+                v-for="col in columns"
+                :key="col.key"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer text-xs text-slate-700 dark:text-slate-300"
+                :class="{ 'opacity-50 cursor-not-allowed': col.required }"
+              >
+                <input
+                  v-model="selectedColumns"
+                  type="checkbox"
+                  :value="col.key"
+                  :disabled="col.required"
+                  class="rounded text-brand border-slate-300 focus:ring-brand"
+                />
+                <span class="truncate">{{ col.label }}</span>
+              </label>
             </div>
-          </Transition>
+          </div>
         </div>
 
-        <div class="flex-none">
-          <slot name="header-actions" />
-        </div>
+        <slot name="header-actions" />
       </div>
     </div>
 
-    <!-- Filter chips -->
+    <!-- Filtros de Estado en pestañas finas -->
     <div
       v-if="filterOptions.length > 0"
-      class="px-3 sm:px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 flex flex-wrap gap-1.5 shrink-0 bg-white dark:bg-slate-800"
+      class="px-4 sm:px-6 py-2 border-b border-slate-100 dark:border-slate-800/30 flex items-center gap-1 shrink-0 overflow-x-auto"
     >
       <button
         type="button"
-        class="h-8 px-3 rounded-full text-xs font-semibold transition-colors"
-        :class="
-          selectedFilter === 'all'
-            ? 'bg-brand text-white'
-            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-        "
+        class="h-7 px-3 rounded-md text-[11px] font-medium transition-colors cursor-pointer"
+        :class="selectedFilter === 'all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'"
         @click="selectedFilter = 'all'"
       >
         Todos
@@ -194,88 +181,59 @@ function rowKey(row, index) {
         v-for="opt in filterOptions"
         :key="opt"
         type="button"
-        class="h-8 px-3 rounded-full text-xs font-semibold transition-colors"
-        :class="
-          selectedFilter === opt
-            ? 'bg-brand text-white'
-            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-        "
+        class="h-7 px-3 rounded-md text-[11px] font-medium transition-colors cursor-pointer"
+        :class="selectedFilter === opt ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'"
         @click="selectedFilter = opt"
       >
         {{ opt }}
       </button>
     </div>
 
-    <div v-if="isColumnPickerOpen" class="fixed inset-0 z-10" @click="isColumnPickerOpen = false" />
-
-    <div class="flex-1 overflow-auto custom-scrollbar relative bg-slate-50/30 dark:bg-slate-900/20">
-      <!-- Desktop -->
-      <table class="min-w-full text-left text-sm whitespace-nowrap hidden md:table">
-        <thead
-          class="sticky top-0 z-10 bg-slate-50 dark:bg-[#0B1120] shadow-sm uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold text-xs border-b border-slate-200 dark:border-slate-700"
-        >
-          <tr class="h-12">
+    <!-- Tabla Editorial Desktop -->
+    <div class="flex-1 overflow-auto custom-scrollbar relative">
+      <table class="min-w-full text-left text-xs whitespace-nowrap hidden md:table">
+        <thead class="sticky top-0 z-10 bg-slate-50/80 dark:bg-[#0B1120]/80 backdrop-blur-md uppercase tracking-[0.15em] font-mono text-[10px] text-slate-400 border-b border-slate-200/60 dark:border-slate-800/50">
+          <tr class="h-11">
             <th
               v-for="col in activeColumns"
               :key="col.key"
-              class="px-4 cursor-pointer hover:text-slate-800 dark:hover:text-white select-none"
+              class="px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none transition-colors"
               @click="handleSort(col.key)"
             >
-              <div class="flex items-center gap-2">
-                {{ col.label }}
-                <i
-                  class="fas fa-sort text-slate-300 dark:text-slate-600"
-                  :class="{
-                    'text-brand': sortColumn === col.key,
-                    'fa-sort-up': sortColumn === col.key && sortAsc,
-                    'fa-sort-down': sortColumn === col.key && !sortAsc
-                  }"
-                />
+              <div class="flex items-center gap-1.5">
+                <span>{{ col.label }}</span>
+                <svg v-if="sortColumn === col.key" class="w-3 h-3 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path :d="sortAsc ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'" />
+                </svg>
               </div>
             </th>
-            <th v-if="$slots.actions" class="px-4 text-right">Acciones</th>
+            <th v-if="$slots.actions" class="px-6 text-right">Acción</th>
           </tr>
         </thead>
 
-        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
-          <template v-if="isLoading">
-            <tr v-for="i in skeletonRows" :key="'skel' + i" class="h-14 animate-pulse">
-              <td v-for="col in activeColumns" :key="'skel-td' + col.key" class="px-4">
-                <div class="h-3.5 bg-slate-200 dark:bg-slate-700/50 rounded w-3/4" />
-              </td>
-              <td v-if="$slots.actions" class="px-4">
-                <div class="h-8 bg-slate-200 dark:bg-slate-700/50 rounded w-16 ml-auto" />
-              </td>
-            </tr>
-          </template>
-
-          <tr v-else-if="paginatedData.length === 0">
-            <td :colspan="activeColumns.length + ($slots.actions ? 1 : 0)" class="py-12">
-              <EmptyState
-                icon="fas fa-search"
-                title="No se encontraron registros"
-                description="Intenta ajustando los filtros o el término de búsqueda."
-              />
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/30 font-light">
+          <tr v-if="paginatedData.length === 0">
+            <td :colspan="activeColumns.length + ($slots.actions ? 1 : 0)" class="py-16 text-center text-slate-400 font-light">
+              Sin registros para mostrar.
             </td>
           </tr>
 
           <tr
             v-for="(row, index) in paginatedData"
-            v-else
             :key="rowKey(row, index)"
-            class="h-14 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+            class="h-12 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
             @click="$emit('row-click', row)"
           >
             <td
               v-for="col in activeColumns"
               :key="col.key"
-              class="px-4 text-slate-700 dark:text-slate-300"
+              class="px-6 text-slate-700 dark:text-slate-300"
             >
               <slot :name="'cell-' + col.key" :item="row">{{ row[col.key] }}</slot>
             </td>
             <td
               v-if="$slots.actions"
-              class="px-4 text-right"
+              class="px-6 text-right"
               @click.stop
             >
               <slot name="actions" :item="row" />
@@ -284,92 +242,52 @@ function rowKey(row, index) {
         </tbody>
       </table>
 
-      <!-- Mobile -->
-      <div class="md:hidden p-3 flex flex-col gap-3">
-        <template v-if="isLoading">
-          <div
-            v-for="i in skeletonMobile"
-            :key="'skelm' + i"
-            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 animate-pulse flex flex-col gap-3 min-h-[88px]"
-          >
-            <div class="h-3.5 bg-slate-200 dark:bg-slate-700/50 rounded w-1/2" />
-            <div class="h-3.5 bg-slate-200 dark:bg-slate-700/50 rounded w-3/4" />
-          </div>
-        </template>
-
-        <div v-else-if="paginatedData.length === 0" class="py-10">
-          <EmptyState icon="fas fa-search" title="Sin resultados" description="Intenta buscar otra cosa." />
-        </div>
-
+      <!-- Versión Móvil Editorial -->
+      <div class="md:hidden p-3 flex flex-col gap-2">
         <div
           v-for="(row, index) in paginatedData"
-          v-else
           :key="rowKey(row, index)"
-          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col shadow-sm cursor-pointer active:scale-[0.99]"
+          class="p-4 rounded-lg border border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/30 flex flex-col gap-2"
           @click="$emit('row-click', row)"
         >
-          <div class="flex flex-col gap-3">
-            <div
-              v-for="col in activeColumns.slice(0, mobilePreviewCount)"
-              :key="col.key"
-              class="flex flex-col"
-            >
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{{ col.label }}</span>
-              <div class="text-sm font-medium text-slate-800 dark:text-slate-200 break-words">
+          <div v-for="col in activeColumns.slice(0, mobilePreviewCount)" :key="col.key" class="flex justify-between items-baseline">
+            <span class="text-[9px] font-mono tracking-widest uppercase text-slate-400">{{ col.label }}</span>
+            <div class="text-xs text-slate-800 dark:text-slate-200 text-right">
+              <slot :name="'cell-' + col.key" :item="row">{{ row[col.key] }}</slot>
+            </div>
+          </div>
+
+          <div v-show="expandedRows.includes(rowKey(row, index))" class="pt-2 border-t border-slate-100 dark:border-slate-800/40 flex flex-col gap-2">
+            <div v-for="col in activeColumns.slice(mobilePreviewCount)" :key="col.key" class="flex justify-between items-baseline">
+              <span class="text-[9px] font-mono tracking-widest uppercase text-slate-400">{{ col.label }}</span>
+              <div class="text-xs text-slate-800 dark:text-slate-200 text-right">
                 <slot :name="'cell-' + col.key" :item="row">{{ row[col.key] }}</slot>
               </div>
             </div>
+            <div v-if="$slots.actions" class="pt-2 flex justify-end" @click.stop>
+              <slot name="actions" :item="row" />
+            </div>
           </div>
 
-          <Transition name="expand">
-            <div v-show="expandedRows.includes(rowKey(row, index))">
-              <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-700/50 flex flex-col gap-3">
-                <div
-                  v-for="col in activeColumns.slice(mobilePreviewCount)"
-                  :key="col.key"
-                  class="flex flex-col"
-                >
-                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{{ col.label }}</span>
-                  <div class="text-sm font-medium text-slate-800 dark:text-slate-200 break-words">
-                    <slot :name="'cell-' + col.key" :item="row">{{ row[col.key] }}</slot>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-if="$slots.actions"
-                class="pt-4 mt-3 border-t border-slate-100 dark:border-slate-700/50 flex flex-wrap justify-end gap-2"
-                @click.stop
-              >
-                <slot name="actions" :item="row" />
-              </div>
-            </div>
-          </Transition>
-
           <button
-            v-if="activeColumns.length > mobilePreviewCount || $slots.actions"
+            v-if="activeColumns.length > mobilePreviewCount"
             type="button"
-            class="mt-3 pt-3 border-t border-slate-50 dark:border-slate-700/30 text-xs font-bold text-brand w-full text-center flex items-center justify-center gap-1.5"
+            class="text-[10px] font-mono tracking-widest uppercase text-brand mt-1 pt-1 text-center"
             @click.stop="toggleRow(rowKey(row, index))"
           >
-            <span>{{ expandedRows.includes(rowKey(row, index)) ? 'Ocultar detalles' : 'Leer más' }}</span>
-            <i
-              :class="expandedRows.includes(rowKey(row, index)) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
-              class="text-[10px]"
-            />
+            {{ expandedRows.includes(rowKey(row, index)) ? 'Menos detalles' : 'Más detalles' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Footer pagination -->
-    <div
-      class="h-14 px-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0 flex items-center justify-between gap-4 z-20"
-    >
-      <div class="hidden sm:flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-        <span>Mostrar</span>
+    <!-- Paginación Footer Fina -->
+    <div class="h-12 px-4 sm:px-6 border-t border-slate-100 dark:border-slate-800/40 flex items-center justify-between text-xs text-slate-400 shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-mono">Fila</span>
         <select
           v-model="itemsPerPage"
-          class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-brand font-medium cursor-pointer"
+          class="bg-transparent border border-slate-200 dark:border-slate-800 rounded px-1.5 py-0.5 text-xs text-slate-600 dark:text-slate-300 outline-none cursor-pointer"
         >
           <option :value="5">5</option>
           <option :value="10">10</option>
@@ -377,61 +295,32 @@ function rowKey(row, index) {
         </select>
       </div>
 
-      <div class="text-sm text-slate-500 dark:text-slate-400 font-medium flex-1 sm:text-center text-left">
-        <span class="sm:hidden text-xs">{{ currentRangeStart }} - {{ currentRangeEnd }} de {{ totalItems }}</span>
-        <span class="hidden sm:inline">
-          Mostrando {{ currentRangeStart }} al {{ currentRangeEnd }} de
-          <strong class="text-slate-800 dark:text-slate-200">{{ totalItems }}</strong>
-        </span>
+      <div class="font-mono text-[11px] tabular-nums">
+        {{ currentRangeStart }}-{{ currentRangeEnd }} de {{ totalItems }}
       </div>
 
-      <div class="flex gap-2 shrink-0">
+      <div class="flex items-center gap-1">
         <button
           type="button"
-          class="min-w-[40px] h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          class="w-7 h-7 rounded border border-slate-200/80 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           :disabled="currentPage === 1"
           @click="currentPage--"
         >
-          <i class="fas fa-chevron-left text-[12px]" />
-          <span class="hidden sm:inline">Anterior</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
         </button>
         <button
           type="button"
-          class="min-w-[40px] h-10 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          class="w-7 h-7 rounded border border-slate-200/80 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           :disabled="currentPage >= totalPages || totalPages === 0"
           @click="currentPage++"
         >
-          <span class="hidden sm:inline">Siguiente</span>
-          <i class="fas fa-chevron-right text-[12px]" />
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
         </button>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-5px);
-}
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s ease-in-out;
-  max-height: 800px;
-  opacity: 1;
-  overflow: hidden;
-}
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  margin-top: 0;
-  border-color: transparent;
-}
-</style>
