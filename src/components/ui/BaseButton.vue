@@ -5,18 +5,17 @@ const props = defineProps({
   isLoading: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
   type: { type: String, default: 'button' },
-  variant: { type: String, default: 'primary' },
-  icon: { type: String, default: '' }
+  variant: { type: String, default: 'primary' }
 })
 
 const buttonClasses = computed(() => {
-  const base = "h-10 px-5 rounded-lg text-xs font-medium tracking-wide transition-all duration-200 flex items-center justify-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
+  const base = "h-9 px-3.5 rounded-md text-xs font-medium transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none"
 
   const variants = {
-    primary: "bg-brand text-white hover:brightness-105 active:scale-[0.99]",
-    secondary: "bg-slate-100 hover:bg-slate-200/80 text-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/50",
-    danger: "bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 border border-rose-500/20",
-    outline: "border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+    primary: "bg-brand text-white hover:brightness-105 active:brightness-95",
+    secondary: "bg-slate-100 hover:bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700",
+    danger: "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100 border border-rose-200 dark:border-rose-900",
+    outline: "border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
   }
 
   return `${base} ${variants[props.variant] || variants.primary}`

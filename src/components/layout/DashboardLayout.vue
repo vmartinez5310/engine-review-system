@@ -5,7 +5,6 @@ import { authState, hasPermission } from '../../composables/useAuth'
 const props = defineProps({ config: Object })
 const emit = defineEmits(['logout'])
 
-const isSidebarOpen = ref(false)
 const isMinified = ref(false)
 const isDarkMode = ref(false)
 const isUserMenuOpen = ref(false)
@@ -33,11 +32,11 @@ const currentViewComponent = computed(() => {
 
 const pageTitle = computed(() => {
   const titles = {
-    home: 'Resumen Ejecutivo',
-    resenas: 'Centro de Reseñas',
-    usuarios: 'Gestión de Operadores',
+    home: 'Inicio',
+    resenas: 'Reseñas',
+    usuarios: 'Usuarios',
     sistema: 'Configuración',
-    perfil: 'Perfil del Operador'
+    perfil: 'Perfil'
   }
   return titles[activeTab.value] || 'Panel'
 })
@@ -57,7 +56,14 @@ function navigateTo(tab, subTab = null) {
   subTabToOpen.value = subTab
   isUserMenuOpen.value = false
   isNotifMenuOpen.value = false
-  isSidebarOpen.value = false
+}
+
+function handleFabClick() {
+  if (activeTab.value === 'usuarios') {
+    window.dispatchEvent(new CustomEvent('fab-add-user'))
+  } else {
+    window.dispatchEvent(new CustomEvent('fab-new-invitation'))
+  }
 }
 
 function toggleTheme() {
@@ -82,26 +88,19 @@ onMounted(() => {
     isDarkMode.value = true
     document.documentElement.classList.add('dark')
   }
-  window.addEventListener('resize', () => {
-    if (window.innerWidth >= 768) {
-      isSidebarOpen.value = false
-      isUserMenuOpen.value = false
-      isNotifMenuOpen.value = false
-    }
-  })
 })
 </script>
 
 <template>
   <div class="h-screen flex w-full relative overflow-hidden text-slate-800 dark:text-slate-200 antialiased bg-[#F8FAFC] dark:bg-[#0B1120] transition-colors duration-300">
+    <!-- Sidebar solo en Desktop (md:) -->
     <aside :class="[
-      'fixed inset-y-0 left-0 bg-white/80 dark:bg-[#0B1120]/90 backdrop-blur-xl border-r border-slate-200/70 dark:border-slate-800/60 z-50 transform md:relative transition-all duration-300 ease-in-out flex flex-col shrink-0',
-      isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0',
+      'hidden md:flex bg-white/80 dark:bg-[#0B1120]/90 backdrop-blur-xl border-r border-slate-200/70 dark:border-slate-800/60 transition-all duration-300 flex-col shrink-0 relative z-30',
       isMinified ? 'w-16' : 'w-56'
     ]">
       <button
         @click="isMinified = !isMinified"
-        class="hidden md:flex absolute -right-3 top-6 w-6 h-6 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-full items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white shadow-sm z-[60] transition-colors cursor-pointer"
+        class="absolute -right-3 top-6 w-6 h-6 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white shadow-sm z-40 transition-colors cursor-pointer"
         aria-label="Minificar"
       >
         <svg class="w-3 h-3 transform transition-transform" :class="isMinified ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -203,18 +202,15 @@ onMounted(() => {
       </nav>
     </aside>
 
-    <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-slate-950/40 dark:bg-black/60 z-40 md:hidden backdrop-blur-sm"></div>
-
-    <main class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-10">
-      <header class="bg-white/60 dark:bg-[#0B1120]/60 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/50 h-16 px-4 sm:px-8 flex items-center justify-between shrink-0 z-30 sticky top-0">
-        <div class="flex items-center gap-3">
-          <button @click="isSidebarOpen = !isSidebarOpen" class="md:hidden text-slate-500 p-1.5 -ml-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
+    <!-- Contenido Principal -->
+    <main class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-10 pb-16 md:pb-0">
+      <header class="bg-white/60 dark:bg-[#0B1120]/60 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/50 h-14 px-4 sm:px-8 flex items-center justify-between shrink-0 z-30 sticky top-0">
+        <div class="flex items-center gap-2">
+          <!-- Logo en móvil -->
+          <div class="md:hidden w-7 h-7 flex items-center justify-center">
+            <img v-if="config?.logoH || config?.logoV" :src="config.logoH || config.logoV" class="w-full h-full object-contain" />
+            <span v-else class="w-2 h-2 rounded-full bg-brand"></span>
+          </div>
           <h2 class="text-xs sm:text-sm font-medium tracking-wide text-slate-900 dark:text-slate-100">{{ pageTitle }}</h2>
         </div>
 
@@ -234,10 +230,10 @@ onMounted(() => {
 
             <div v-if="isNotifMenuOpen" @click="isNotifMenuOpen = false" class="fixed inset-0 z-40"></div>
 
-            <div v-if="isNotifMenuOpen" class="absolute right-0 top-11 w-64 bg-white dark:bg-[#0B1120] rounded-lg border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden z-50">
+            <div v-if="isNotifMenuOpen" class="absolute right-0 top-11 w-64 bg-white dark:bg-[#0B1120] rounded-md border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden z-50">
               <div class="p-3 border-b border-slate-100 dark:border-slate-800/60 flex justify-between items-center text-xs">
                 <span class="font-medium text-slate-500">Notificaciones</span>
-                <span v-if="totalNotifications > 0" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand/10 text-brand">{{ totalNotifications }}</span>
+                <span v-if="totalNotifications > 0" class="px-1.5 py-0.5 rounded bg-brand/10 text-brand text-xs">{{ totalNotifications }}</span>
               </div>
               <div class="p-4 text-center text-xs text-slate-400" v-if="totalNotifications === 0">Sin alertas pendientes</div>
               <div v-else class="flex flex-col divide-y divide-slate-100 dark:divide-slate-800/40">
@@ -263,31 +259,25 @@ onMounted(() => {
 
           <div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
 
-          <!-- Menú de Usuario con Toggle de Tema Integrado -->
+          <!-- Menú de Usuario -->
           <div class="relative flex items-center">
             <button
               @click="isUserMenuOpen = !isUserMenuOpen; isNotifMenuOpen = false"
-              class="flex items-center gap-2.5 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+              class="flex items-center gap-2 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
             >
-              <div class="w-7 h-7 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 flex items-center justify-center font-mono text-[10px] overflow-hidden">
+              <div class="w-7 h-7 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-medium overflow-hidden">
                 <img v-if="currentUser.logo" :src="currentUser.logo" class="w-full h-full object-cover" @error="$event.target.style.display = 'none'" />
                 <template v-else>{{ userInitials }}</template>
               </div>
               <span class="hidden sm:inline text-xs font-normal text-slate-800 dark:text-slate-200">{{ userName }}</span>
-              <svg class="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
             </button>
 
             <div v-if="isUserMenuOpen" @click="isUserMenuOpen = false" class="fixed inset-0 z-40"></div>
 
-            <div v-if="isUserMenuOpen" class="absolute right-0 top-11 w-56 bg-white dark:bg-[#0B1120] rounded-lg border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden z-50 text-xs">
+            <div v-if="isUserMenuOpen" class="absolute right-0 top-11 w-56 bg-white dark:bg-[#0B1120] rounded-md border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden z-50 text-xs">
               <div class="p-3 border-b border-slate-100 dark:border-slate-800/60">
                 <p class="font-medium text-slate-900 dark:text-slate-100 truncate">{{ currentUser.nombre }}</p>
-                <p class="text-[11px] text-slate-400 truncate mt-0.5">{{ currentUser.email }}</p>
-                <span class="inline-block mt-1.5 px-1.5 py-0.5 text-[9px] font-mono tracking-widest uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded">
-                  {{ userRole }}
-                </span>
+                <p class="text-xs text-slate-400 truncate mt-0.5">{{ currentUser.email }}</p>
               </div>
 
               <div class="p-1 space-y-0.5">
@@ -302,7 +292,6 @@ onMounted(() => {
                   <span>Mi Perfil</span>
                 </button>
 
-                <!-- Selector de Modo Oscuro dentro del menú -->
                 <div
                   @click="toggleTheme"
                   class="w-full flex items-center justify-between px-2.5 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded cursor-pointer transition-colors"
@@ -318,7 +307,7 @@ onMounted(() => {
                     </svg>
                     <span>Modo Oscuro</span>
                   </div>
-                  <span class="text-[10px] font-mono uppercase text-slate-400">{{ isDarkMode ? 'On' : 'Off' }}</span>
+                  <span class="text-xs text-slate-400">{{ isDarkMode ? 'On' : 'Off' }}</span>
                 </div>
 
                 <div class="border-t border-slate-100 dark:border-slate-800/60 my-1"></div>
@@ -344,5 +333,67 @@ onMounted(() => {
         <component :is="currentViewComponent" :config="config" :initial-sub-tab="subTabToOpen" />
       </div>
     </main>
+
+    <!-- Bottom Navigation Bar exclusiva para Móvil con Botón FAB Central -->
+    <div class="md:hidden fixed bottom-0 inset-x-0 h-14 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 z-50 flex items-center justify-around px-2">
+      <button
+        @click="navigateTo('home')"
+        :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'home' ? 'text-brand' : 'text-slate-400']"
+        title="Inicio"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+      </button>
+
+      <button
+        @click="navigateTo('resenas')"
+        :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'resenas' ? 'text-brand' : 'text-slate-400']"
+        title="Reseñas"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </button>
+
+      <!-- Botón FAB Central de Creación en Móvil -->
+      <button
+        @click="handleFabClick"
+        class="w-10 h-10 -mt-4 bg-brand text-white rounded-md flex items-center justify-center shadow-md active:scale-95 transition-transform"
+        aria-label="Acción principal"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+
+      <button
+        v-if="hasPermission('gestionar_usuarios')"
+        @click="navigateTo('usuarios')"
+        :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'usuarios' ? 'text-brand' : 'text-slate-400']"
+        title="Usuarios"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+        </svg>
+      </button>
+
+      <button
+        v-if="hasPermission('configurar_sistema')"
+        @click="navigateTo('sistema')"
+        :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'sistema' ? 'text-brand' : 'text-slate-400']"
+        title="Configuración"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
   </div>
 </template>

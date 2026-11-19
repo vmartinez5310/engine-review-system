@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../../services/supabaseClient'
 import { hasPermission } from '../../composables/useAuth'
 import ResenasTable from './ResenasTable.vue'
@@ -68,12 +68,21 @@ async function fetchData() {
   }
 }
 
+function handleFabTrigger() {
+  openNewLinkModal()
+}
+
 onMounted(() => {
   let targetSub = props.initialSubTab
   if (targetSub === 'recibidas' || targetSub === 'por_evaluar') {
     activeSubTab.value = targetSub
   }
   fetchData()
+  window.addEventListener('fab-new-invitation', handleFabTrigger)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('fab-new-invitation', handleFabTrigger)
 })
 
 watch(() => props.initialSubTab, (newSub) => {
@@ -128,58 +137,55 @@ async function revokeToken(item) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4">
-    <!-- Selector segmentado fino -->
-    <div class="flex items-center gap-1 border-b border-slate-200/60 dark:border-slate-800/60 pb-3 shrink-0">
+  <div class="h-full flex flex-col gap-3">
+    <!-- Pestañas simples sin mayúsculas sostenidas -->
+    <div class="flex items-center gap-1 border-b border-slate-200/60 dark:border-slate-800/60 pb-2 shrink-0 text-xs">
       <button
         type="button"
         :class="[
-          'px-4 py-1.5 text-xs font-mono tracking-wider uppercase transition-colors cursor-pointer rounded-md',
+          'px-3 py-1.5 font-medium transition-colors cursor-pointer rounded',
           activeSubTab === 'recibidas'
-            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-            : 'text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900'
+            : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
         ]"
         @click="activeSubTab = 'recibidas'"
       >
-        Bandeja Recibidas
+        Bandeja de entrada
       </button>
 
       <button
         v-if="hasPermission('ver_seguimientos')"
         type="button"
         :class="[
-          'px-4 py-1.5 text-xs font-mono tracking-wider uppercase transition-colors cursor-pointer rounded-md',
+          'px-3 py-1.5 font-medium transition-colors cursor-pointer rounded',
           activeSubTab === 'por_evaluar'
-            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-            : 'text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900'
+            : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
         ]"
         @click="activeSubTab = 'por_evaluar'"
       >
-        Monitoreo de Enlaces
+        Monitoreo de enlaces
       </button>
     </div>
 
-    <!-- Área de tabla principal -->
     <div class="flex-1 overflow-hidden flex flex-col relative">
-      <Transition name="fade" mode="out-in">
-        <div v-if="activeSubTab === 'recibidas'" key="recibidas" class="absolute inset-0 flex flex-col">
-          <ResenasTable
-            :data="reviews"
-            :is-loading="isLoading"
-            @open-modal="openNewLinkModal"
-            @row-click="handleReviewClick"
-          />
-        </div>
-        <div v-else-if="activeSubTab === 'por_evaluar'" key="por_evaluar" class="absolute inset-0 flex flex-col">
-          <SeguimientosTable
-            :data="tokens"
-            :is-loading="isLoading"
-            @open-modal="openNewLinkModal"
-            @row-click="handleTokenClick"
-            @revoke="revokeToken"
-          />
-        </div>
-      </Transition>
+      <div v-if="activeSubTab === 'recibidas'" class="h-full flex flex-col">
+        <ResenasTable
+          :data="reviews"
+          :is-loading="isLoading"
+          @open-modal="openNewLinkModal"
+          @row-click="handleReviewClick"
+        />
+      </div>
+      <div v-else-if="activeSubTab === 'por_evaluar'" class="h-full flex flex-col">
+        <SeguimientosTable
+          :data="tokens"
+          :is-loading="isLoading"
+          @open-modal="openNewLinkModal"
+          @row-click="handleTokenClick"
+          @revoke="revokeToken"
+        />
+      </div>
     </div>
 
     <GestionResenaModal v-model="showManageModal" :review="selectedReview" @updated="fetchData" />
@@ -191,10 +197,3 @@ async function revokeToken(item) {
     />
   </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active { transition: opacity 0.15s ease; }
-.fade-enter-from,
-.fade-leave-to { opacity: 0; }
-</style>

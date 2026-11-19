@@ -1,5 +1,7 @@
 <script setup>
 import { hasPermission } from '../../composables/useAuth'
+import BaseButton from '../../components/ui/BaseButton.vue'
+import StatusBadge from '../../components/ui/StatusBadge.vue'
 
 defineProps({
   data: { type: Array, default: () => [] },
@@ -22,13 +24,11 @@ const filterOptions = ['Activo', 'Usado', 'Expirado', 'Revocado']
 </script>
 
 <template>
-  <SkeletonBlock v-if="isLoading" variant="tokens" :rows="6" />
   <DataTable
-    v-else
     :mobile-preview-count="3"
     :columns="columns"
     :data="data"
-    :is-loading="false"
+    :is-loading="isLoading"
     search-placeholder="Buscar cliente o servicio..."
     :filter-options="filterOptions"
     filter-column-key="estado"
@@ -37,21 +37,22 @@ const filterOptions = ['Activo', 'Usado', 'Expirado', 'Revocado']
     <template #header-actions>
       <BaseButton
         v-if="hasPermission('generar_enlace')"
-        icon="fas fa-plus"
         @click="$emit('open-modal')"
       >
-        <span class="hidden sm:inline ml-1">Pedir Reseña</span>
+        <template #icon>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </template>
+        <span class="hidden sm:inline">Nueva invitación</span>
       </BaseButton>
     </template>
 
     <template #cell-dias="{ item }">
       <span
-        class="text-xs font-semibold tabular-nums"
-        :class="
-          item.estado === 'Expirado' || item.dias >= 7
-            ? 'text-red-500 dark:text-red-400'
-            : 'text-slate-600 dark:text-slate-400'
-        "
+        class="text-xs tabular-nums"
+        :class="item.estado === 'Expirado' || item.dias >= 7 ? 'text-rose-500 font-medium' : 'text-slate-600 dark:text-slate-400'"
       >
         {{ item.dias === 0 ? 'Hoy' : `${item.dias} días` }}
       </span>
@@ -65,11 +66,14 @@ const filterOptions = ['Activo', 'Usado', 'Expirado', 'Revocado']
       <button
         v-if="item.estado === 'Activo' && hasPermission('editar_resena')"
         type="button"
-        class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-        title="Revocar enlace"
+        class="p-1 rounded text-slate-400 hover:text-rose-500 transition-colors"
+        title="Inhabilitar enlace"
         @click.stop="$emit('revoke', item)"
       >
-        <i class="fas fa-ban text-xs" />
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+        </svg>
       </button>
     </template>
   </DataTable>

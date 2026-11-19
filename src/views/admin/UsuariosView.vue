@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '../../services/supabaseClient'
 import { hasPermission } from '../../composables/useAuth'
 import UsuarioFormModal from './UsuarioFormModal.vue'
+import BaseButton from '../../components/ui/BaseButton.vue'
+import StatusBadge from '../../components/ui/StatusBadge.vue'
 
 const isLoading = ref(true)
 const users = ref([])
@@ -12,7 +14,7 @@ const selectedUser = ref(null)
 const columns = [
   { key: 'avatar', label: '', required: true },
   { key: 'nombre', label: 'Nombre', required: true },
-  { key: 'email', label: 'Email', required: true },
+  { key: 'email', label: 'Correo', required: true },
   { key: 'rol', label: 'Rol' },
   { key: 'estado', label: 'Estado', required: true }
 ]
@@ -34,7 +36,18 @@ async function fetchUsers() {
   }
 }
 
-onMounted(fetchUsers)
+function handleFabUser() {
+  openCreate()
+}
+
+onMounted(() => {
+  fetchUsers()
+  window.addEventListener('fab-add-user', handleFabUser)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('fab-add-user', handleFabUser)
+})
 
 function openCreate() {
   selectedUser.value = null
@@ -48,7 +61,7 @@ function openEdit(user) {
 }
 
 async function toggleStatus(user) {
-  const next = String(user.estado).toUpperCase() === 'ACTIVO' ? 'Suspendido' : 'Activo'
+  const next = String(user.estado).toLowerCase() === 'activo' ? 'Suspendido' : 'Activo'
   const result = await window.Swal?.fire({
     title: next === 'Activo' ? '¿Activar usuario?' : '¿Suspender usuario?',
     text: user.nombre,
@@ -86,31 +99,34 @@ function initials(name) {
 
 <template>
   <div class="h-full flex flex-col gap-3">
-    <SkeletonBlock v-if="isLoading" variant="table" :rows="6" />
-
     <DataTable
-      v-else
       :mobile-preview-count="3"
       :columns="columns"
       :data="users"
-      :is-loading="false"
+      :is-loading="isLoading"
       search-placeholder="Buscar usuario..."
       :filter-options="['Activo', 'Pendiente', 'Suspendido']"
       filter-column-key="estado"
       @row-click="openEdit"
     >
       <template #header-actions>
+        <!-- En móvil el botón se resume a icono para no saturar -->
         <BaseButton
           v-if="hasPermission('gestionar_usuarios')"
-          icon="fas fa-user-plus"
           @click="openCreate"
         >
-          <span class="hidden sm:inline ml-1">Añadir Usuario</span>
+          <template #icon>
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </template>
+          <span class="hidden sm:inline">Nuevo usuario</span>
         </BaseButton>
       </template>
 
       <template #cell-avatar="{ item }">
-        <div class="w-9 h-9 rounded-full overflow-hidden bg-brand/10 flex items-center justify-center shrink-0">
+        <div class="w-7 h-7 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center shrink-0 overflow-hidden">
           <img
             v-if="item.logo"
             :src="item.logo"
@@ -118,12 +134,12 @@ function initials(name) {
             class="w-full h-full object-cover"
             @error="$event.target.style.display = 'none'"
           />
-          <span v-else class="text-xs font-bold text-brand">{{ initials(item.nombre) }}</span>
+          <span v-else class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ initials(item.nombre) }}</span>
         </div>
       </template>
 
       <template #cell-rol="{ item }">
-        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ item.rol }}</span>
+        <span class="text-xs text-slate-500">{{ item.rol }}</span>
       </template>
 
       <template #cell-estado="{ item }">
@@ -134,22 +150,28 @@ function initials(name) {
         <div v-if="hasPermission('gestionar_usuarios')" class="flex items-center gap-1 justify-end">
           <button
             type="button"
-            class="p-2 rounded-lg text-slate-400 hover:text-brand hover:bg-brand/10 transition-colors"
+            class="p-1.5 rounded text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
             title="Editar"
             @click.stop="openEdit(item)"
           >
-            <i class="fas fa-pen text-xs" />
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
           </button>
           <button
             type="button"
-            class="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
-            :title="String(item.estado).toUpperCase() === 'ACTIVO' ? 'Suspender' : 'Activar'"
+            class="p-1.5 rounded text-slate-400 hover:text-amber-500 transition-colors"
+            :title="String(item.estado).toLowerCase() === 'activo' ? 'Suspender' : 'Activar'"
             @click.stop="toggleStatus(item)"
           >
-            <i
-              :class="String(item.estado).toUpperCase() === 'ACTIVO' ? 'fas fa-user-slash' : 'fas fa-user-check'"
-              class="text-xs"
-            />
+            <svg v-if="String(item.estado).toLowerCase() === 'activo'" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            </svg>
+            <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </button>
         </div>
       </template>

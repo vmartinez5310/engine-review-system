@@ -7,7 +7,7 @@ const props = defineProps({
   isLoading: { type: Boolean, default: false },
   filterOptions: { type: Array, default: () => [] },
   filterColumnKey: { type: String, default: '' },
-  searchPlaceholder: { type: String, default: 'Filtrar registros...' },
+  searchPlaceholder: { type: String, default: 'Buscar...' },
   mobilePreviewCount: { type: Number, default: 2 }
 })
 
@@ -51,7 +51,7 @@ const filteredAndSortedData = computed(() => {
   }
 
   if (selectedFilter.value !== 'all' && props.filterColumnKey) {
-    result = result.filter((row) => row[props.filterColumnKey] === selectedFilter.value)
+    result = result.filter((row) => String(row[props.filterColumnKey]).toLowerCase() === String(selectedFilter.value).toLowerCase())
   }
 
   if (sortColumn.value) {
@@ -103,9 +103,9 @@ function rowKey(row, index) {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-white/70 dark:bg-[#0F172A]/30 backdrop-blur-md rounded-xl border border-slate-200/60 dark:border-slate-800/50 overflow-hidden transition-all duration-300">
-    <!-- Barra superior de búsqueda y utilidades -->
-    <div class="h-14 px-4 sm:px-6 border-b border-slate-100 dark:border-slate-800/40 flex gap-3 items-center shrink-0">
+  <div class="flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-lg overflow-hidden">
+    <!-- Barra superior -->
+    <div class="h-13 px-4 border-b border-slate-200/80 dark:border-slate-800 flex gap-2.5 items-center shrink-0">
       <div class="flex-1 sm:w-64 sm:flex-initial relative">
         <svg class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="11" cy="11" r="8"></circle>
@@ -115,7 +115,7 @@ function rowKey(row, index) {
           v-model="searchQuery"
           type="text"
           :placeholder="searchPlaceholder"
-          class="w-full h-9 pl-9 pr-3 rounded-lg bg-slate-100/70 dark:bg-slate-900/40 border border-transparent focus:border-slate-200 dark:focus:border-slate-700 outline-none text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-all"
+          class="w-full h-8 pl-8 pr-3 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 outline-none text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-brand"
         />
       </div>
 
@@ -124,8 +124,9 @@ function rowKey(row, index) {
         <div class="relative">
           <button
             type="button"
-            class="h-9 px-3 border border-slate-200/70 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 flex items-center gap-2 transition-colors cursor-pointer"
+            class="h-8 px-2.5 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
             @click="isColumnPickerOpen = !isColumnPickerOpen"
+            title="Seleccionar columnas"
           >
             <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18"></path>
@@ -137,14 +138,14 @@ function rowKey(row, index) {
 
           <div
             v-if="isColumnPickerOpen"
-            class="absolute right-0 mt-2 w-48 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-2"
+            class="absolute right-0 mt-1.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md shadow-lg z-50 p-2"
           >
-            <div class="text-[9px] font-mono tracking-[0.2em] uppercase text-slate-400 px-2 py-1">Visibilidad</div>
-            <div class="flex flex-col gap-0.5 max-h-56 overflow-y-auto custom-scrollbar">
+            <div class="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1">Columnas visibles</div>
+            <div class="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
               <label
                 v-for="col in columns"
                 :key="col.key"
-                class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer text-xs text-slate-700 dark:text-slate-300"
+                class="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-xs text-slate-700 dark:text-slate-300"
                 :class="{ 'opacity-50 cursor-not-allowed': col.required }"
               >
                 <input
@@ -164,15 +165,15 @@ function rowKey(row, index) {
       </div>
     </div>
 
-    <!-- Filtros de Estado en pestañas finas -->
+    <!-- Filtros de Estado sin mayúsculas sostenidas -->
     <div
       v-if="filterOptions.length > 0"
-      class="px-4 sm:px-6 py-2 border-b border-slate-100 dark:border-slate-800/30 flex items-center gap-1 shrink-0 overflow-x-auto"
+      class="px-4 py-2 border-b border-slate-200/60 dark:border-slate-800 flex items-center gap-1.5 shrink-0 overflow-x-auto"
     >
       <button
         type="button"
-        class="h-7 px-3 rounded-md text-[11px] font-medium transition-colors cursor-pointer"
-        :class="selectedFilter === 'all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'"
+        class="h-6 px-2.5 rounded text-xs font-medium transition-colors cursor-pointer"
+        :class="selectedFilter === 'all' ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
         @click="selectedFilter = 'all'"
       >
         Todos
@@ -181,23 +182,23 @@ function rowKey(row, index) {
         v-for="opt in filterOptions"
         :key="opt"
         type="button"
-        class="h-7 px-3 rounded-md text-[11px] font-medium transition-colors cursor-pointer"
-        :class="selectedFilter === opt ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'"
+        class="h-6 px-2.5 rounded text-xs font-medium transition-colors cursor-pointer"
+        :class="selectedFilter === opt ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
         @click="selectedFilter = opt"
       >
         {{ opt }}
       </button>
     </div>
 
-    <!-- Tabla Editorial Desktop -->
-    <div class="flex-1 overflow-auto custom-scrollbar relative">
+    <!-- Tabla Desktop con líneas limpias -->
+    <div class="flex-1 overflow-auto">
       <table class="min-w-full text-left text-xs whitespace-nowrap hidden md:table">
-        <thead class="sticky top-0 z-10 bg-slate-50/80 dark:bg-[#0B1120]/80 backdrop-blur-md uppercase tracking-[0.15em] font-mono text-[10px] text-slate-400 border-b border-slate-200/60 dark:border-slate-800/50">
-          <tr class="h-11">
+        <thead class="sticky top-0 z-10 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm text-xs font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          <tr class="h-10">
             <th
               v-for="col in activeColumns"
               :key="col.key"
-              class="px-6 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none transition-colors"
+              class="px-4 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 select-none transition-colors"
               @click="handleSort(col.key)"
             >
               <div class="flex items-center gap-1.5">
@@ -207,13 +208,13 @@ function rowKey(row, index) {
                 </svg>
               </div>
             </th>
-            <th v-if="$slots.actions" class="px-6 text-right">Acción</th>
+            <th v-if="$slots.actions" class="px-4 text-right">Acción</th>
           </tr>
         </thead>
 
-        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/30 font-light">
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 font-normal">
           <tr v-if="paginatedData.length === 0">
-            <td :colspan="activeColumns.length + ($slots.actions ? 1 : 0)" class="py-16 text-center text-slate-400 font-light">
+            <td :colspan="activeColumns.length + ($slots.actions ? 1 : 0)" class="py-12 text-center text-slate-400">
               Sin registros para mostrar.
             </td>
           </tr>
@@ -221,19 +222,19 @@ function rowKey(row, index) {
           <tr
             v-for="(row, index) in paginatedData"
             :key="rowKey(row, index)"
-            class="h-12 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
+            class="h-11 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
             @click="$emit('row-click', row)"
           >
             <td
               v-for="col in activeColumns"
               :key="col.key"
-              class="px-6 text-slate-700 dark:text-slate-300"
+              class="px-4 text-slate-700 dark:text-slate-300"
             >
               <slot :name="'cell-' + col.key" :item="row">{{ row[col.key] }}</slot>
             </td>
             <td
               v-if="$slots.actions"
-              class="px-6 text-right"
+              class="px-4 text-right"
               @click.stop
             >
               <slot name="actions" :item="row" />
@@ -242,24 +243,24 @@ function rowKey(row, index) {
         </tbody>
       </table>
 
-      <!-- Versión Móvil Editorial -->
-      <div class="md:hidden p-3 flex flex-col gap-2">
+      <!-- Versión Móvil sin cards abultadas -->
+      <div class="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
         <div
           v-for="(row, index) in paginatedData"
           :key="rowKey(row, index)"
-          class="p-4 rounded-lg border border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/30 flex flex-col gap-2"
+          class="p-4 flex flex-col gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer"
           @click="$emit('row-click', row)"
         >
-          <div v-for="col in activeColumns.slice(0, mobilePreviewCount)" :key="col.key" class="flex justify-between items-baseline">
-            <span class="text-[9px] font-mono tracking-widest uppercase text-slate-400">{{ col.label }}</span>
+          <div v-for="col in activeColumns.slice(0, mobilePreviewCount)" :key="col.key" class="flex justify-between items-baseline gap-2">
+            <span class="text-xs text-slate-400 font-medium">{{ col.label }}</span>
             <div class="text-xs text-slate-800 dark:text-slate-200 text-right">
               <slot :name="'cell-' + col.key" :item="row">{{ row[col.key] }}</slot>
             </div>
           </div>
 
-          <div v-show="expandedRows.includes(rowKey(row, index))" class="pt-2 border-t border-slate-100 dark:border-slate-800/40 flex flex-col gap-2">
-            <div v-for="col in activeColumns.slice(mobilePreviewCount)" :key="col.key" class="flex justify-between items-baseline">
-              <span class="text-[9px] font-mono tracking-widest uppercase text-slate-400">{{ col.label }}</span>
+          <div v-show="expandedRows.includes(rowKey(row, index))" class="pt-2 flex flex-col gap-2">
+            <div v-for="col in activeColumns.slice(mobilePreviewCount)" :key="col.key" class="flex justify-between items-baseline gap-2">
+              <span class="text-xs text-slate-400 font-medium">{{ col.label }}</span>
               <div class="text-xs text-slate-800 dark:text-slate-200 text-right">
                 <slot :name="'cell-' + col.key" :item="row">{{ row[col.key] }}</slot>
               </div>
@@ -272,7 +273,7 @@ function rowKey(row, index) {
           <button
             v-if="activeColumns.length > mobilePreviewCount"
             type="button"
-            class="text-[10px] font-mono tracking-widest uppercase text-brand mt-1 pt-1 text-center"
+            class="text-xs text-brand font-medium text-left mt-1"
             @click.stop="toggleRow(rowKey(row, index))"
           >
             {{ expandedRows.includes(rowKey(row, index)) ? 'Menos detalles' : 'Más detalles' }}
@@ -281,13 +282,13 @@ function rowKey(row, index) {
       </div>
     </div>
 
-    <!-- Paginación Footer Fina -->
-    <div class="h-12 px-4 sm:px-6 border-t border-slate-100 dark:border-slate-800/40 flex items-center justify-between text-xs text-slate-400 shrink-0">
-      <div class="flex items-center gap-2">
-        <span class="text-[11px] font-mono">Fila</span>
+    <!-- Paginación Footer -->
+    <div class="h-11 px-4 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 shrink-0">
+      <div class="flex items-center gap-1.5">
+        <span>Filas</span>
         <select
           v-model="itemsPerPage"
-          class="bg-transparent border border-slate-200 dark:border-slate-800 rounded px-1.5 py-0.5 text-xs text-slate-600 dark:text-slate-300 outline-none cursor-pointer"
+          class="bg-transparent border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-xs text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
         >
           <option :value="5">5</option>
           <option :value="10">10</option>
@@ -295,28 +296,28 @@ function rowKey(row, index) {
         </select>
       </div>
 
-      <div class="font-mono text-[11px] tabular-nums">
+      <div class="tabular-nums">
         {{ currentRangeStart }}-{{ currentRangeEnd }} de {{ totalItems }}
       </div>
 
       <div class="flex items-center gap-1">
         <button
           type="button"
-          class="w-7 h-7 rounded border border-slate-200/80 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          class="w-6 h-6 rounded border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           :disabled="currentPage === 1"
           @click="currentPage--"
         >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
         <button
           type="button"
-          class="w-7 h-7 rounded border border-slate-200/80 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          class="w-6 h-6 rounded border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           :disabled="currentPage >= totalPages || totalPages === 0"
           @click="currentPage++"
         >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
         </button>
