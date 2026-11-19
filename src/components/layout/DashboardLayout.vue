@@ -12,12 +12,10 @@ const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 const showGlobalInviteModal = ref(false)
 
-// Pull to refresh global
 const isRefreshing = ref(false)
 const pullDistance = ref(0)
 let startY = 0
 
-// Persistencia de pestaña activa en URL y SessionStorage
 const initialTab = new URLSearchParams(window.location.search).get('tab') || sessionStorage.getItem('active_tab') || 'home'
 const activeTab = ref(initialTab)
 const subTabToOpen = ref(new URLSearchParams(window.location.search).get('subtab') || null)
@@ -83,7 +81,6 @@ function handleFabClick() {
   }
 }
 
-// Pull to Refresh global
 function handleTouchStart(e) {
   if (window.scrollY === 0) {
     startY = e.touches[0].clientY
@@ -145,12 +142,14 @@ onMounted(() => {
     @touchmove="handleTouchMove"
     @touchend="handleTouchEnd"
   >
-    <!-- Barra lateral desktop -->
-    <aside :class="[
-      'hidden md:flex bg-white/80 dark:bg-[#0B1120]/90 backdrop-blur-xl border-r border-slate-200/70 dark:border-slate-800/60 transition-all duration-300 flex-col shrink-0 relative z-30',
-      isMinified ? 'w-16' : 'w-56'
-    ]">
+    <aside
+      :class="[
+        'hidden md:flex bg-white/80 dark:bg-[#0B1120]/90 backdrop-blur-xl border-r border-slate-200/70 dark:border-slate-800/60 transition-all duration-300 flex-col shrink-0 relative z-30',
+        isMinified ? 'w-16' : 'w-56'
+      ]"
+    >
       <button
+        type="button"
         @click="isMinified = !isMinified"
         class="absolute -right-3 top-6 w-6 h-6 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white shadow-sm z-40 cursor-pointer"
         aria-label="Minificar"
@@ -173,6 +172,7 @@ onMounted(() => {
 
       <nav class="flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto">
         <button
+          type="button"
           @click="navigateTo('home')"
           :class="[
             'w-full h-9 flex items-center px-3 rounded-full transition-colors text-xs font-medium cursor-pointer',
@@ -193,6 +193,7 @@ onMounted(() => {
         </button>
 
         <button
+          type="button"
           @click="navigateTo('resenas')"
           :class="[
             'w-full h-9 flex items-center px-3 rounded-full transition-colors text-xs font-medium cursor-pointer',
@@ -211,6 +212,7 @@ onMounted(() => {
 
         <button
           v-if="hasPermission('gestionar_usuarios')"
+          type="button"
           @click="navigateTo('usuarios')"
           :class="[
             'w-full h-9 flex items-center px-3 rounded-full transition-colors text-xs font-medium cursor-pointer',
@@ -230,6 +232,7 @@ onMounted(() => {
 
         <button
           v-if="hasPermission('configurar_sistema')"
+          type="button"
           @click="navigateTo('sistema')"
           :class="[
             'w-full h-9 flex items-center px-3 rounded-full transition-colors text-xs font-medium cursor-pointer',
@@ -241,7 +244,7 @@ onMounted(() => {
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <svg class="w-4 h-4 shrink-0" :class="activeTab === 'sistema' ? 'text-brand' : 'text-slate-400'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0 1.82-.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
             <span v-show="!isMinified" class="ml-2.5 truncate">Configuración</span>
           </div>
@@ -249,13 +252,11 @@ onMounted(() => {
       </nav>
     </aside>
 
-    <!-- Contenedor principal -->
     <main class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-10 pb-16 md:pb-0">
-      <!-- Indicador de Pull to Refresh Global -->
       <div
         v-if="pullDistance > 0 || isRefreshing"
         class="flex items-center justify-center py-2 transition-all"
-        :style="{ height: `${pullDistance}px` }"
+        :style="{ height: pullDistance + 'px' }"
       >
         <svg :class="['w-5 h-5 text-brand', { 'animate-spin': isRefreshing }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
@@ -271,9 +272,9 @@ onMounted(() => {
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3">
-          <!-- Notificaciones -->
           <div class="relative flex items-center">
             <button
+              type="button"
               @click="isNotifMenuOpen = !isNotifMenuOpen; isUserMenuOpen = false"
               class="relative w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
             >
@@ -295,6 +296,7 @@ onMounted(() => {
               <div v-else class="flex flex-col divide-y divide-slate-100 dark:divide-slate-800/40">
                 <button
                   v-if="notifications.resenasNuevas > 0"
+                  type="button"
                   @click="navigateTo('resenas', 'recibidas')"
                   class="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs flex items-center gap-2 text-slate-700 dark:text-slate-300"
                 >
@@ -303,6 +305,7 @@ onMounted(() => {
                 </button>
                 <button
                   v-if="notifications.seguimientosAtrasados > 0"
+                  type="button"
                   @click="navigateTo('resenas', 'por_evaluar')"
                   class="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs flex items-center gap-2 text-slate-700 dark:text-slate-300"
                 >
@@ -315,9 +318,9 @@ onMounted(() => {
 
           <div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
 
-          <!-- Menú Usuario -->
           <div class="relative flex items-center">
             <button
+              type="button"
               @click="isUserMenuOpen = !isUserMenuOpen; isNotifMenuOpen = false"
               class="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
             >
@@ -338,6 +341,7 @@ onMounted(() => {
 
               <div class="p-1.5 space-y-0.5">
                 <button
+                  type="button"
                   @click="navigateTo('perfil')"
                   class="w-full flex items-center gap-2 px-3 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-colors"
                 >
@@ -369,6 +373,7 @@ onMounted(() => {
                 <div class="border-t border-slate-100 dark:border-slate-800/60 my-1"></div>
 
                 <button
+                  type="button"
                   @click="logout"
                   class="w-full flex items-center gap-2 px-3 py-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                 >
@@ -390,12 +395,11 @@ onMounted(() => {
       </div>
     </main>
 
-    <!-- Bottom Navigation Bar móvil con FAB redondo sin atributos duplicados -->
     <div class="md:hidden fixed bottom-0 inset-x-0 h-14 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 z-50 flex items-center justify-around px-2">
       <button
+        type="button"
         @click="navigateTo('home')"
         :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'home' ? 'text-brand' : 'text-slate-400']"
-        title="Inicio"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <rect x="3" y="3" width="7" height="7"></rect>
@@ -406,17 +410,17 @@ onMounted(() => {
       </button>
 
       <button
+        type="button"
         @click="navigateTo('resenas')"
         :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'resenas' ? 'text-brand' : 'text-slate-400']"
-        title="Reseñas"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
         </svg>
       </button>
 
-      <!-- FAB 100% Redondo -->
       <button
+        type="button"
         @click="handleFabClick"
         class="w-12 h-12 -mt-5 bg-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
         aria-label="Nueva acción"
@@ -429,9 +433,9 @@ onMounted(() => {
 
       <button
         v-if="hasPermission('gestionar_usuarios')"
+        type="button"
         @click="navigateTo('usuarios')"
         :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'usuarios' ? 'text-brand' : 'text-slate-400']"
-        title="Usuarios"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -441,18 +445,17 @@ onMounted(() => {
 
       <button
         v-if="hasPermission('configurar_sistema')"
+        type="button"
         @click="navigateTo('sistema')"
         :class="['flex flex-col items-center justify-center w-12 h-full text-xs transition-colors', activeTab === 'sistema' ? 'text-brand' : 'text-slate-400']"
-        title="Configuración"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0 1.82-.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
       </button>
     </div>
 
-    <!-- Modal global para emitir invitación desde Dashboard o Configuración -->
     <GenerarResenaModal v-model="showGlobalInviteModal" />
   </div>
 </template>
