@@ -22,18 +22,35 @@ const comentario = ref('')
 const legalOk = ref(false)
 const privacyUrl = ref('')
 
-const canSubmit = computed(() =>
-  nombre.value.trim().length >= 2 &&
-  calificacion.value >= 1 &&
-  legalOk.value &&
-  !submitting.value
-)
+const errors = ref({
+  nombre: '',
+  calificacion: '',
+  legalOk: ''
+})
+
+function validateForm() {
+  errors.value = { nombre: '', calificacion: '', legalOk: '' }
+  let valid = true
+
+  if (!nombre.value.trim() || nombre.value.trim().length < 2) {
+    errors.value.nombre = 'Ingresa tu nombre completo'
+    valid = false
+  }
+  if (!calificacion.value || calificacion.value < 1) {
+    errors.value.calificacion = 'Selecciona una calificación'
+    valid = false
+  }
+  if (!legalOk.value) {
+    errors.value.legalOk = 'Debes aceptar los términos y aviso de privacidad'
+    valid = false
+  }
+
+  return valid
+}
 
 onMounted(async () => {
   try {
     const cleanToken = props.inviteToken.trim()
-
-    // 1. Cargar el token y la URL del aviso de privacidad en paralelo
     const [tokenRes, configRes] = await Promise.all([
       supabase.from('tokens').select('*').eq('id_enlace', cleanToken).maybeSingle(),
       supabase.from('configuracion').select('clave, valor').eq('clave', 'Aviso_Privacidad_URL').maybeSingle()
@@ -57,14 +74,14 @@ onMounted(async () => {
 })
 
 async function enviar() {
-  if (!canSubmit.value) return
+  if (!validateForm()) return
+
   submitting.value = true
   errorMsg.value = ''
   try {
     const idResena = 'RES-' + Math.random().toString(36).substring(2, 10).toUpperCase()
     const userIdAsociado = tokenRecord.value?.user_id_admin || 'WEB'
 
-    // 1. Insertar la reseña
     const { error: revErr } = await supabase.from('resenas').insert({
       id_resena: idResena,
       user_id: userIdAsociado,
@@ -79,7 +96,6 @@ async function enviar() {
 
     if (revErr) throw revErr
 
-    // 2. Quemar el token explícitamente usando su id_enlace (además del trigger de base de datos)
     if (tokenRecord.value?.id_enlace) {
       await supabase
         .from('tokens')
@@ -99,121 +115,109 @@ async function enviar() {
 <template>
   <div class="min-h-screen flex items-center justify-center px-4 py-8 bg-slate-50 dark:bg-slate-900">
     <div v-if="loading" class="text-center">
-      <div class="w-12 h-12 border-4 border-slate-200 border-t-brand rounded-full animate-spin mx-auto mb-4" />
-      <p class="text-sm text-slate-500 tracking-wide uppercase">Validando invitación...</p>
+      <div class="w-10 h-10 border-2 border-slate-200 border-t-brand rounded-full animate-spin mx-auto mb-3" />
+      <p class="text-xs text-slate-500">Validando invitación...</p>
     </div>
 
     <div
       v-else-if="invalid"
-      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 text-center"
+      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center"
     >
-      <div class="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-link-slash text-xl" />
-      </div>
-      <h1 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Enlace no disponible</h1>
-      <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">
+      <h1 class="text-lg font-medium text-slate-800 dark:text-white mb-2">Enlace no disponible</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-xs">
         Este enlace ya fue utilizado, ha expirado o no es válido.
       </p>
     </div>
 
     <div
       v-else-if="success"
-      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 text-center"
+      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center"
     >
-      <div class="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-check text-xl" />
-      </div>
-      <h1 class="text-xl font-bold text-slate-800 dark:text-white mb-2">¡Muchas gracias!</h1>
-      <p class="text-slate-500 dark:text-slate-400 text-sm">
+      <h1 class="text-lg font-medium text-slate-800 dark:text-white mb-2">Gracias por tu opinión</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-xs">
         Tu reseña se ha registrado con éxito.
       </p>
     </div>
 
     <form
       v-else
-      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 sm:p-8 space-y-5"
+      class="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 sm:p-8 space-y-4"
       @submit.prevent="enviar"
+      novalidate
     >
       <div class="text-center mb-2">
-        <h1 class="text-xl font-bold text-slate-800 dark:text-white">Comparte tu experiencia</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {{ props.config?.nombre || 'Inmobiliarte 22' }}
-        </p>
+        <h1 class="text-lg font-medium text-slate-800 dark:text-white">Comparte tu experiencia</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ props.config?.nombre || 'Inmobiliarte 22' }}</p>
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Nombre público</label>
+        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre</label>
         <input
           v-model="nombre"
           type="text"
-          required
-          minlength="2"
-          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white text-base sm:text-sm"
+          class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/50 border rounded-full outline-none text-base sm:text-xs text-slate-800 dark:text-white focus:border-brand"
+          :class="errors.nombre ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'"
         />
+        <p v-if="errors.nombre" class="text-rose-500 text-xs mt-1">{{ errors.nombre }}</p>
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Servicio recibido</label>
+        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Servicio</label>
         <input
           v-model="zona"
           type="text"
-          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white text-base sm:text-sm"
+          class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-full outline-none text-base sm:text-xs text-slate-800 dark:text-white focus:border-brand"
         />
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Calificación</label>
-        <div class="flex items-center gap-2" @mouseleave="hoverStar = 0">
+        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Calificación</label>
+        <div class="flex items-center gap-1.5" @mouseleave="hoverStar = 0">
           <button
             v-for="n in 5"
             :key="n"
             type="button"
-            class="text-3xl p-1 focus:outline-none transition-transform active:scale-110"
+            class="text-2xl p-1 focus:outline-none transition-transform active:scale-110"
             @mouseenter="hoverStar = n"
             @click="calificacion = n"
           >
-            <i class="fas fa-star" :class="n <= (hoverStar || calificacion) ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600'" />
+            <span :class="n <= (hoverStar || calificacion) ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700'">★</span>
           </button>
         </div>
+        <p v-if="errors.calificacion" class="text-rose-500 text-xs mt-1">{{ errors.calificacion }}</p>
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Comentario</label>
+        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Comentario</label>
         <textarea
           v-model="comentario"
-          rows="4"
-          class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-brand text-slate-800 dark:text-white text-base sm:text-sm resize-none"
-          placeholder="Cuéntanos sobre el servicio recibido..."
+          rows="3"
+          class="w-full p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-base sm:text-xs text-slate-800 dark:text-white resize-none focus:border-brand"
+          placeholder="Cuéntanos tu experiencia..."
         />
       </div>
 
-      <label class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
-        <input v-model="legalOk" type="checkbox" class="mt-1 w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand shrink-0" required />
-        <span class="text-xs sm:text-sm leading-relaxed">
-          Acepto el
-          <a
-            v-if="privacyUrl"
-            :href="privacyUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-brand font-semibold underline hover:brightness-110"
-            @click.stop
-          >
-            aviso de privacidad
-          </a>
-          <span v-else class="font-semibold text-slate-700 dark:text-slate-200">aviso de privacidad</span>
-          y autorizo la publicación de mi reseña.
-        </span>
-      </label>
+      <div>
+        <label class="flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+          <input v-model="legalOk" type="checkbox" class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand" />
+          <span>
+            Acepto el
+            <a v-if="privacyUrl" :href="privacyUrl" target="_blank" class="text-brand underline">aviso de privacidad</a>
+            <span v-else>aviso de privacidad</span>
+            y autorizo la publicación.
+          </span>
+        </label>
+        <p v-if="errors.legalOk" class="text-rose-500 text-xs mt-1">{{ errors.legalOk }}</p>
+      </div>
 
-      <p v-if="errorMsg" class="text-sm text-red-500 font-medium">{{ errorMsg }}</p>
+      <p v-if="errorMsg" class="text-xs text-rose-500">{{ errorMsg }}</p>
 
       <button
         type="submit"
-        :disabled="!canSubmit"
-        class="w-full bg-brand hover:brightness-110 text-white font-semibold py-3.5 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer text-base"
+        :disabled="submitting"
+        class="w-full bg-brand text-white font-medium py-2.5 rounded-full shadow-sm hover:brightness-105 disabled:opacity-50 text-xs cursor-pointer"
       >
-        <span>{{ submitting ? 'Enviando...' : 'Enviar Reseña' }}</span>
+        {{ submitting ? 'Enviando...' : 'Enviar Reseña' }}
       </button>
     </form>
   </div>

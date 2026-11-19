@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, defineAsyncComponent } from 'vue'
+import { ref, onMounted, computed, defineAsyncComponent, watch } from 'vue'
 import { authState, hasPermission } from '../../composables/useAuth'
 import GenerarResenaModal from '../../views/core/GenerarResenaModal.vue'
 
@@ -12,8 +12,22 @@ const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 const showGlobalInviteModal = ref(false)
 
-const activeTab = ref('home')
-const subTabToOpen = ref(null)
+// Pull to refresh global
+const isRefreshing = ref(false)
+const pullDistance = ref(0)
+let startY = 0
+
+// 2. Persistencia de página activa en URL y SessionStorage
+const initialTab = new URLSearchParams(window.location.search).get('tab') || sessionStorage.getItem('active_tab') || 'home'
+const activeTab = ref(initialTab)
+const subTabToOpen = ref(new URLSearchParams(window.location.search).get('subtab') || null)
+
+watch(activeTab, (newTab) => {
+  sessionStorage.setItem('active_tab', newTab)
+  const url = new URL(window.location.href)
+  url.searchParams.set('tab', newTab)
+  window.history.replaceState({}, '', url)
+})
 
 const DashboardHomeView = defineAsyncComponent(() => import('../../views/core/DashboardHomeView.vue'))
 const ResenasView = defineAsyncComponent(() => import('../../views/core/ResenasView.vue'))
@@ -44,7 +58,6 @@ const pageTitle = computed(() => {
 })
 
 const currentUser = computed(() => authState.user || {})
-const userRole = computed(() => currentUser.value.rol || 'USUARIO')
 const userName = computed(() => currentUser.value.nombre || 'Operador')
 const userInitials = computed(() => (currentUser.value.nombre || 'U').slice(0, 2).toUpperCase())
 
@@ -66,9 +79,38 @@ function handleFabClick() {
   } else if (activeTab.value === 'resenas') {
     window.dispatchEvent(new CustomEvent('fab-new-invitation'))
   } else {
-    // En Dashboard o Configuración, abrir invitación global
     showGlobalInviteModal.value = true
   }
+}
+
+// 3. Pull to Refresh global
+function handleTouchStart(e) {
+  if (window.scrollY === 0) {
+    startY = e.touches[0].clientY
+  }
+}
+
+function handleTouchMove(e) {
+  if (startY > 0) {
+    const diff = e.touches[0].clientY - startY
+    if (diff > 0) {
+      pullDistance.value = Math.min(diff * 0.4, 60)
+    }
+  }
+}
+
+async function handleTouchEnd() {
+  if (pullDistance.value >= 45) {
+    isRefreshing.value = true
+    window.dispatchEvent(new CustomEvent('app-global-refresh'))
+    setTimeout(() => {
+      isRefreshing.value = false
+      pullDistance.value = 0
+    }, 800)
+  } else {
+    pullDistance.value = 0
+  }
+  startY = 0
 }
 
 function toggleTheme() {
@@ -97,15 +139,20 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-screen flex w-full relative overflow-hidden text-slate-800 dark:text-slate-200 antialiased bg-[#F8FAFC] dark:bg-[#0B1120] transition-colors duration-300">
-    <!-- Barra Lateral Desktop -->
+  <div
+    class="h-screen flex w-full relative overflow-hidden text-slate-800 dark:text-slate-200 antialiased bg-[#F8FAFC] dark:bg-[#0B1120] transition-colors duration-300"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+  >
+    <!-- Barra lateral desktop -->
     <aside :class="[
       'hidden md:flex bg-white/80 dark:bg-[#0B1120]/90 backdrop-blur-xl border-r border-slate-200/70 dark:border-slate-800/60 transition-all duration-300 flex-col shrink-0 relative z-30',
       isMinified ? 'w-16' : 'w-56'
     ]">
       <button
         @click="isMinified = !isMinified"
-        class="absolute -right-3 top-6 w-6 h-6 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white shadow-sm z-40 transition-colors cursor-pointer"
+        class="absolute -right-3 top-6 w-6 h-6 bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white shadow-sm z-40 cursor-pointer"
         aria-label="Minificar"
       >
         <svg class="w-3 h-3 transform transition-transform" :class="isMinified ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -113,7 +160,6 @@ onMounted(() => {
         </svg>
       </button>
 
-      <!-- Logo / Identidad limpia (SIN PUNTITOS) -->
       <div class="h-16 px-4 flex items-center border-b border-slate-200/60 dark:border-slate-800/50 shrink-0 overflow-hidden" :class="isMinified ? 'justify-center px-0' : 'justify-start'">
         <div v-if="isMinified" class="w-8 h-8 rounded flex items-center justify-center overflow-hidden shrink-0">
           <img v-if="config?.logoH || config?.logoV" :src="config.logoH || config.logoV" class="w-full h-full object-contain" />
@@ -195,7 +241,7 @@ onMounted(() => {
           <div class="flex items-center w-full" :class="isMinified ? 'justify-center' : 'justify-start'">
             <svg class="w-4 h-4 shrink-0" :class="activeTab === 'sistema' ? 'text-brand' : 'text-slate-400'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
             <span v-show="!isMinified" class="ml-2.5 truncate">Configuración</span>
           </div>
@@ -203,11 +249,21 @@ onMounted(() => {
       </nav>
     </aside>
 
-    <!-- Contenido Principal -->
+    <!-- Contenedor principal -->
     <main class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-10 pb-16 md:pb-0">
+      <!-- Indicador de Pull to Refresh Global -->
+      <div
+        v-if="pullDistance > 0 || isRefreshing"
+        class="flex items-center justify-center py-2 transition-all"
+        :style="{ height: `${pullDistance}px` }"
+      >
+        <svg :class="['w-5 h-5 text-brand', { 'animate-spin': isRefreshing }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+      </div>
+
       <header class="bg-white/60 dark:bg-[#0B1120]/60 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/50 h-14 px-4 sm:px-8 flex items-center justify-between shrink-0 z-30 sticky top-0">
         <div class="flex items-center gap-2">
-          <!-- Logo en móvil sin puntitos -->
           <div class="md:hidden w-7 h-7 flex items-center justify-center">
             <img v-if="config?.logoH || config?.logoV" :src="config.logoH || config.logoV" class="w-full h-full object-contain" />
           </div>
@@ -259,7 +315,7 @@ onMounted(() => {
 
           <div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
 
-          <!-- Menú de Usuario -->
+          <!-- Menú Usuario -->
           <div class="relative flex items-center">
             <button
               @click="isUserMenuOpen = !isUserMenuOpen; isNotifMenuOpen = false"
@@ -316,7 +372,7 @@ onMounted(() => {
                   @click="logout"
                   class="w-full flex items-center gap-2 px-3 py-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                 >
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <svg class="w-3.5 h-3.5 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                     <polyline points="16 17 21 12 16 7"></polyline>
                     <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -334,7 +390,7 @@ onMounted(() => {
       </div>
     </main>
 
-    <!-- Barra Inferior Móvil con FAB Redondo Central (w-12 h-12 rounded-full) -->
+    <!-- Bottom Navigation Bar móvil con FAB redondo -->
     <div class="md:hidden fixed bottom-0 inset-x-0 h-14 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 z-50 flex items-center justify-around px-2">
       <button
         @click="navigateTo('home')"
@@ -359,7 +415,7 @@ onMounted(() => {
         </svg>
       </button>
 
-      <!-- FAB 100% Redondo (w-12 h-12 rounded-full) -->
+      <!-- FAB redondo -->
       <button
         @click="handleFabClick"
         class="w-12 h-12 -mt-5 bg-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
@@ -392,12 +448,12 @@ onMounted(() => {
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
       </button>
     </div>
 
-    <!-- Modal global para emitir invitación desde Dashboard o Configuración -->
+    <!-- Modal global -->
     <GenerarResenaModal v-model="showGlobalInviteModal" />
   </div>
 </template>
