@@ -25,11 +25,12 @@ const privacyUrl = ref('')
 const errors = ref({
   nombre: '',
   calificacion: '',
+  comentario: '',
   legalOk: ''
 })
 
 function validateForm() {
-  errors.value = { nombre: '', calificacion: '', legalOk: '' }
+  errors.value = { nombre: '', calificacion: '', comentario: '', legalOk: '' }
   let valid = true
 
   if (!nombre.value.trim() || nombre.value.trim().length < 2) {
@@ -40,8 +41,12 @@ function validateForm() {
     errors.value.calificacion = 'Selecciona una calificación'
     valid = false
   }
+  if (!comentario.value.trim() || comentario.value.trim().length < 5) {
+    errors.value.comentario = 'Por favor escribe un comentario detallando tu experiencia'
+    valid = false
+  }
   if (!legalOk.value) {
-    errors.value.legalOk = 'Debes aceptar los términos y aviso de privacidad'
+    errors.value.legalOk = 'Debes aceptar los términos y el aviso de privacidad'
     valid = false
   }
 
@@ -79,9 +84,11 @@ async function enviar() {
   submitting.value = true
   errorMsg.value = ''
   try {
+    const cleanToken = props.inviteToken.trim()
     const idResena = 'RES-' + Math.random().toString(36).substring(2, 10).toUpperCase()
     const userIdAsociado = tokenRecord.value?.user_id_admin || 'WEB'
 
+    // 1. Insertar reseña
     const { error: revErr } = await supabase.from('resenas').insert({
       id_resena: idResena,
       user_id: userIdAsociado,
@@ -96,12 +103,11 @@ async function enviar() {
 
     if (revErr) throw revErr
 
-    if (tokenRecord.value?.id_enlace) {
-      await supabase
-        .from('tokens')
-        .update({ estado: 'Usado' })
-        .eq('id_enlace', tokenRecord.value.id_enlace)
-    }
+    // 2. Inhabilitar token directamente por id_enlace
+    await supabase
+      .from('tokens')
+      .update({ estado: 'Usado' })
+      .eq('id_enlace', cleanToken)
 
     success.value = true
   } catch (e) {
@@ -135,7 +141,7 @@ async function enviar() {
     >
       <h1 class="text-lg font-medium text-slate-800 dark:text-white mb-2">Gracias por tu opinión</h1>
       <p class="text-slate-500 dark:text-slate-400 text-xs">
-        Tu reseña se ha registrado con éxito.
+        Tu reseña se ha registrado con éxito y ha sido enviada al equipo de moderación.
       </p>
     </div>
 
@@ -162,7 +168,7 @@ async function enviar() {
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Servicio</label>
+        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Servicio recibido</label>
         <input
           v-model="zona"
           type="text"
@@ -188,13 +194,17 @@ async function enviar() {
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Comentario</label>
+        <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+          Comentario <span class="text-rose-500">*</span>
+        </label>
         <textarea
           v-model="comentario"
           rows="3"
-          class="w-full p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-base sm:text-xs text-slate-800 dark:text-white resize-none focus:border-brand"
-          placeholder="Cuéntanos tu experiencia..."
+          class="w-full p-3 bg-slate-50 dark:bg-slate-900/50 border rounded-xl outline-none text-base sm:text-xs text-slate-800 dark:text-white resize-none focus:border-brand"
+          :class="errors.comentario ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'"
+          placeholder="Escribe aquí tu opinión detallada..."
         />
+        <p v-if="errors.comentario" class="text-rose-500 text-xs mt-1">{{ errors.comentario }}</p>
       </div>
 
       <div>
